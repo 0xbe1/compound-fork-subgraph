@@ -47,11 +47,8 @@ import {
 } from "../generated/schema";
 import {
   BIGDECIMAL_ZERO,
-  mMOVRAddr,
-  comptrollerAddr,
   cTokenDecimals,
   cTokenDecimalsBD,
-  MOVRAddr,
   exponentToBigDecimal,
   LendingType,
   mantissaFactor,
@@ -60,15 +57,20 @@ import {
   ProtocolType,
   RiskType,
   SECONDS_PER_DAY,
-  BLOCKS_PER_DAY,
   SECONDS_PER_HOUR,
   BIGDECIMAL_HUNDRED,
   BIGINT_ZERO,
-  MFAMAddr,
   RewardTokenType,
   InterestRateSide,
   InterestRateType,
   SECONDS_PER_YEAR,
+} from "../../src/constants";
+import {
+  mMOVRAddr,
+  comptrollerAddr,
+  MOVRAddr,
+  MFAMAddr,
+  BLOCKS_PER_DAY,
 } from "./constants";
 import { PriceOracle } from "../generated/templates/CToken/PriceOracle";
 

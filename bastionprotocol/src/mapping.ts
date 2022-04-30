@@ -43,15 +43,11 @@ import {
   InterestRate,
   MarketHourlySnapshot,
   UsageMetricsHourlySnapshot,
-  RewardToken,
 } from "../generated/schema";
 import {
   BIGDECIMAL_ZERO,
-  cETHAddr,
-  comptrollerAddr,
   cTokenDecimals,
   cTokenDecimalsBD,
-  ETHAddr,
   exponentToBigDecimal,
   LendingType,
   mantissaFactor,
@@ -60,15 +56,18 @@ import {
   ProtocolType,
   RiskType,
   SECONDS_PER_DAY,
-  BLOCKS_PER_DAY,
   SECONDS_PER_HOUR,
   BIGDECIMAL_HUNDRED,
   BIGINT_ZERO,
-  // MFAMAddr,
-  RewardTokenType,
   InterestRateSide,
   InterestRateType,
   SECONDS_PER_YEAR,
+} from "../../src/constants";
+import {
+  cETHAddr,
+  comptrollerAddr,
+  ETHAddr,
+  BLOCKS_PER_DAY,
 } from "./constants";
 import { PriceOracle } from "../generated/templates/CToken/PriceOracle";
 
