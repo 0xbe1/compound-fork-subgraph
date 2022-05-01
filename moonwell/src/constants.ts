@@ -7,9 +7,6 @@ import { Address } from "@graphprotocol/graph-ts";
 export let comptrollerAddr = Address.fromString(
   "0x0b7a0EAA884849c6Af7a129e899536dDDcA4905E"
 );
-export let mMOVRAddr = Address.fromString(
-  "0x6a1A771C7826596652daDC9145fEAaE62b1cd07f"
-);
 export let MOVRAddr = Address.fromString(
   "0x0000000000000000000000000000000000000000"
 );
@@ -21,3 +18,19 @@ export let MFAMAddr = Address.fromString(
 // however, we know this is fluctuating according to https://moonriver.moonscan.io/chart/blocks
 // maybe we could find a better way to get this data rather than hardcoding it
 export const BLOCKS_PER_DAY = 3600 as i32;
+
+export const nativeToken = {
+  address: Address.fromString(
+    "0x0000000000000000000000000000000000000000"
+  ),
+  name: "MOVR",
+  symbol: "MOVR"
+}
+
+export const nativeCToken = {
+  address: Address.fromString(
+    "0x6a1A771C7826596652daDC9145fEAaE62b1cd07f"
+  ),
+  name: "Moonwell MOVR",
+  symbol: "mMOVR"
+}

@@ -64,10 +64,9 @@ import {
   SECONDS_PER_YEAR,
 } from "../../src/constants";
 import {
-  cETHAddr,
   comptrollerAddr,
-  ETHAddr,
-  BLOCKS_PER_DAY,
+  nativeCToken,
+  nativeToken,
 } from "./constants";
 import { PriceOracle } from "../generated/templates/CToken/PriceOracle";
 
@@ -113,8 +112,8 @@ export function handleMarketListed(event: MarketListed): void {
 
   // if we cannot fetch the underlying token of a non-cETH cToken
   // then fail early
-  if (cTokenAddr == cETHAddr) {
-    underlyingTokenAddr = ETHAddr;
+  if (cTokenAddr == nativeCToken.address) {
+    underlyingTokenAddr = nativeToken.address;
   } else {
     let underlyingTokenAddrResult = cTokenContract.try_underlying();
     if (underlyingTokenAddrResult.reverted) {
@@ -128,9 +127,9 @@ export function handleMarketListed(event: MarketListed): void {
   }
 
   cToken = new Token(cTokenAddr.toHexString());
-  if (cTokenAddr == cETHAddr) {
-    cToken.name = "Bastion Ether";
-    cToken.symbol = "cETH";
+  if (cTokenAddr == nativeCToken.address) {
+    cToken.name = nativeCToken.name;
+    cToken.symbol = nativeCToken.symbol;
     cToken.decimals = cTokenDecimals;
   } else {
     cToken.name = getOrElse<string>(cTokenContract.try_name(), "unknown");
@@ -143,10 +142,10 @@ export function handleMarketListed(event: MarketListed): void {
   // create underlying token
   //
   let underlyingToken = new Token(underlyingTokenAddr.toHexString());
-  if (underlyingTokenAddr == ETHAddr) {
+  if (underlyingTokenAddr == nativeToken.address) {
     // don't want to call CEther contract, hardcode instead
-    underlyingToken.name = "Ether";
-    underlyingToken.symbol = "ETH";
+    underlyingToken.name = nativeToken.name;
+    underlyingToken.symbol = nativeToken.symbol;
     underlyingToken.decimals = 18;
   } else {
     let underlyingTokenContract = ERC20.bind(underlyingTokenAddr);
@@ -1381,58 +1380,58 @@ function setInterestRate(
   market.save();
 }
 
-function setMOVRReward(
-  market: Market,
-  result: ethereum.CallResult<BigInt>,
-  rewardIndex: i32
-): void {
-  if (result.reverted) {
-    log.warning("[setMOVRReward] result reverted", []);
-    return;
-  }
-  let rewardRatePerBlock = result.value;
-  let rewardRatePerDay = rewardRatePerBlock.times(
-    BigInt.fromI32(BLOCKS_PER_DAY)
-  );
-  if (market.rewardTokenEmissionsAmount) {
-    let rewardTokenEmissionsAmount = market.rewardTokenEmissionsAmount!;
-    rewardTokenEmissionsAmount[rewardIndex] = rewardRatePerDay;
-    market.rewardTokenEmissionsAmount = rewardTokenEmissionsAmount;
-  }
-  let rewardToken = Token.load(ETHAddr.toHexString());
-  if (
-    rewardToken &&
-    rewardToken.lastPriceUSD &&
-    market.rewardTokenEmissionsUSD
-  ) {
-    let rewardTokenEmissionsUSD = market.rewardTokenEmissionsUSD!;
-    rewardTokenEmissionsUSD[rewardIndex] = rewardRatePerBlock
-      .toBigDecimal()
-      .div(exponentToBigDecimal(rewardToken.decimals))
-      .times(rewardToken.lastPriceUSD!); // need ! otherwise not compile
-    market.rewardTokenEmissionsUSD = rewardTokenEmissionsUSD;
-  }
-}
+// function setMOVRReward(
+//   market: Market,
+//   result: ethereum.CallResult<BigInt>,
+//   rewardIndex: i32
+// ): void {
+//   if (result.reverted) {
+//     log.warning("[setMOVRReward] result reverted", []);
+//     return;
+//   }
+//   let rewardRatePerBlock = result.value;
+//   let rewardRatePerDay = rewardRatePerBlock.times(
+//     BigInt.fromI32(BLOCKS_PER_DAY)
+//   );
+//   if (market.rewardTokenEmissionsAmount) {
+//     let rewardTokenEmissionsAmount = market.rewardTokenEmissionsAmount!;
+//     rewardTokenEmissionsAmount[rewardIndex] = rewardRatePerDay;
+//     market.rewardTokenEmissionsAmount = rewardTokenEmissionsAmount;
+//   }
+//   let rewardToken = Token.load(ETHAddr.toHexString());
+//   if (
+//     rewardToken &&
+//     rewardToken.lastPriceUSD &&
+//     market.rewardTokenEmissionsUSD
+//   ) {
+//     let rewardTokenEmissionsUSD = market.rewardTokenEmissionsUSD!;
+//     rewardTokenEmissionsUSD[rewardIndex] = rewardRatePerBlock
+//       .toBigDecimal()
+//       .div(exponentToBigDecimal(rewardToken.decimals))
+//       .times(rewardToken.lastPriceUSD!); // need ! otherwise not compile
+//     market.rewardTokenEmissionsUSD = rewardTokenEmissionsUSD;
+//   }
+// }
 
-function setMFAMReward(
-  market: Market,
-  result: ethereum.CallResult<BigInt>,
-  rewardIndex: i32
-): void {
-  if (result.reverted) {
-    log.warning("[setMFAMReward] result reverted", []);
-    return;
-  }
-  let rewardRatePerBlock = result.value;
-  let rewardRatePerDay = rewardRatePerBlock.times(
-    BigInt.fromI32(BLOCKS_PER_DAY)
-  );
-  if (market.rewardTokenEmissionsAmount) {
-    let rewardTokenEmissionsAmount = market.rewardTokenEmissionsAmount!;
-    rewardTokenEmissionsAmount[rewardIndex] = rewardRatePerDay;
-    market.rewardTokenEmissionsAmount = rewardTokenEmissionsAmount;
-  }
-}
+// function setMFAMReward(
+//   market: Market,
+//   result: ethereum.CallResult<BigInt>,
+//   rewardIndex: i32
+// ): void {
+//   if (result.reverted) {
+//     log.warning("[setMFAMReward] result reverted", []);
+//     return;
+//   }
+//   let rewardRatePerBlock = result.value;
+//   let rewardRatePerDay = rewardRatePerBlock.times(
+//     BigInt.fromI32(BLOCKS_PER_DAY)
+//   );
+//   if (market.rewardTokenEmissionsAmount) {
+//     let rewardTokenEmissionsAmount = market.rewardTokenEmissionsAmount!;
+//     rewardTokenEmissionsAmount[rewardIndex] = rewardRatePerDay;
+//     market.rewardTokenEmissionsAmount = rewardTokenEmissionsAmount;
+//   }
+// }
 
 function getMarketHourlySnapshotID(marketID: string, timestamp: i32): string {
   return marketID
