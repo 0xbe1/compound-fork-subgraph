@@ -760,11 +760,9 @@ function getOrCreateProtocol(): LendingProtocol {
     Network.AURORA
   );
   let comptroller = Comptroller.bind(comptrollerAddr);
-  let liquidationIncentiveMantissaResult =
-    comptroller.try_liquidationIncentiveMantissa();
   return templateGetOrCreateProtocol(
     protocolData,
-    liquidationIncentiveMantissaResult
+    comptroller.try_liquidationIncentiveMantissa()
   );
 }
 
