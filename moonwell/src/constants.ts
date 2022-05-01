@@ -21,32 +21,28 @@ export let MFAMAddr = Address.fromString(
 export const BLOCKS_PER_DAY = 3600 as i32;
 
 export class TokenData {
-  address: Address
-  name: string
-  symbol: string
-  decimals: i32
+  address: Address;
+  name: string;
+  symbol: string;
+  decimals: i32;
   constructor(address: Address, name: string, symbol: string, decimals: i32) {
-    this.address = address
-    this.name = name
-    this.symbol = symbol
-    this.decimals = decimals
+    this.address = address;
+    this.name = name;
+    this.symbol = symbol;
+    this.decimals = decimals;
   }
 }
 
 export const nativeToken = new TokenData(
-  Address.fromString(
-    "0x0000000000000000000000000000000000000000"
-  ),
+  Address.fromString("0x0000000000000000000000000000000000000000"),
   "MOVR",
   "MOVR",
   18
-)
+);
 
 export const nativeCToken = new TokenData(
-  Address.fromString(
-    "0x6a1A771C7826596652daDC9145fEAaE62b1cd07f"
-  ),
+  Address.fromString("0x6a1A771C7826596652daDC9145fEAaE62b1cd07f"),
   "Moonwell MOVR",
   "mMOVR",
   cTokenDecimals
-)
+);

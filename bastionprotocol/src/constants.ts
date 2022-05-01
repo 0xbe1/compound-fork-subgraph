@@ -13,15 +13,15 @@ export let comptrollerAddr = Address.fromString(
 export const BLOCKS_PER_DAY = (24 * 60 * 60) / 2;
 
 export class TokenData {
-  address: Address
-  name: string
-  symbol: string
-  decimals: i32
+  address: Address;
+  name: string;
+  symbol: string;
+  decimals: i32;
   constructor(address: Address, name: string, symbol: string, decimals: i32) {
-    this.address = address
-    this.name = name
-    this.symbol = symbol
-    this.decimals = decimals
+    this.address = address;
+    this.name = name;
+    this.symbol = symbol;
+    this.decimals = decimals;
   }
 }
 
@@ -30,13 +30,11 @@ export const nativeToken = new TokenData(
   "Ether",
   "ETH",
   18
-  )
+);
 
 export const nativeCToken = new TokenData(
-  Address.fromString(
-    "0x4E8fE8fd314cFC09BDb0942c5adCC37431abDCD0"
-  ),
+  Address.fromString("0x4E8fE8fd314cFC09BDb0942c5adCC37431abDCD0"),
   "Bastion Ether",
   "cETH",
   cTokenDecimals
-)
+);

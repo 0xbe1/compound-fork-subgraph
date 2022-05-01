@@ -63,16 +63,9 @@ import {
   InterestRateType,
   SECONDS_PER_YEAR,
 } from "../../src/constants";
-import {
-  comptrollerAddr,
-  nativeCToken,
-  nativeToken,
-} from "./constants";
+import { comptrollerAddr, nativeCToken, nativeToken } from "./constants";
 import { PriceOracle } from "../generated/templates/CToken/PriceOracle";
-import {
-  templateGetOrCreateProtocol,
-  ProtocolData,
-} from "../../src/mapping"
+import { templateGetOrCreateProtocol, ProtocolData } from "../../src/mapping";
 
 enum EventType {
   Deposit,
@@ -756,10 +749,14 @@ function getOrCreateProtocol(): LendingProtocol {
     "1.0.0",
     "1.0.0",
     Network.AURORA
-  )
+  );
   let comptroller = Comptroller.bind(comptrollerAddr);
-  let liquidationIncentiveMantissaResult = comptroller.try_liquidationIncentiveMantissa()
-  return templateGetOrCreateProtocol(protocolData, liquidationIncentiveMantissaResult) as LendingProtocol
+  let liquidationIncentiveMantissaResult =
+    comptroller.try_liquidationIncentiveMantissa();
+  return templateGetOrCreateProtocol(
+    protocolData,
+    liquidationIncentiveMantissaResult
+  ) as LendingProtocol;
 }
 
 function updateMarket(

@@ -74,10 +74,7 @@ import {
   nativeToken,
 } from "./constants";
 import { PriceOracle } from "../generated/templates/CToken/PriceOracle";
-import {
-  ProtocolData,
-  templateGetOrCreateProtocol,
-} from "../../src/mapping"
+import { ProtocolData, templateGetOrCreateProtocol } from "../../src/mapping";
 
 enum EventType {
   Deposit,
@@ -761,10 +758,14 @@ function getOrCreateProtocol(): LendingProtocol {
     "1.0.0",
     "1.0.0",
     Network.AURORA
-  )
+  );
   let comptroller = Comptroller.bind(comptrollerAddr);
-  let liquidationIncentiveMantissaResult = comptroller.try_liquidationIncentiveMantissa()
-  return templateGetOrCreateProtocol(protocolData, liquidationIncentiveMantissaResult)
+  let liquidationIncentiveMantissaResult =
+    comptroller.try_liquidationIncentiveMantissa();
+  return templateGetOrCreateProtocol(
+    protocolData,
+    liquidationIncentiveMantissaResult
+  );
 }
 
 function updateMarket(
