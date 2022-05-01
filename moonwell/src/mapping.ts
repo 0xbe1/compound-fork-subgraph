@@ -16,8 +16,9 @@ import {
   AccrueInterest,
   CToken,
   LiquidateBorrow,
-  NewReserveFactor,
+  // NewReserveFactor,
 } from "../generated/Comptroller/CToken";
+import { NewReserveFactor } from "../../generated/Comptroller/CToken";
 import { CToken as CTokenTemplate } from "../generated/templates";
 import { ERC20 } from "../generated/Comptroller/ERC20";
 import {
@@ -74,7 +75,11 @@ import {
   nativeToken,
 } from "./constants";
 import { PriceOracle } from "../generated/templates/CToken/PriceOracle";
-import { ProtocolData, templateGetOrCreateProtocol } from "../../src/mapping";
+import {
+  ProtocolData,
+  templateGetOrCreateProtocol,
+  templateHandleNewReserveFactor,
+} from "../../src/mapping";
 
 enum EventType {
   Deposit,
@@ -359,23 +364,8 @@ export function handleNewLiquidationIncentive(
   }
 }
 
-//
-//
-// event.params
-// - oldReserveFactorMantissa
-// - newReserveFactorMantissa
 export function handleNewReserveFactor(event: NewReserveFactor): void {
-  let marketID = event.address.toHexString();
-  let market = Market.load(marketID);
-  if (market == null) {
-    log.warning("[handleNewReserveFactor] Market not found: {}", [marketID]);
-    return;
-  }
-  let reserveFactor = event.params.newReserveFactorMantissa
-    .toBigDecimal()
-    .div(mantissaFactorBD);
-  market._reserveFactor = reserveFactor;
-  market.save();
+  templateHandleNewReserveFactor(event);
 }
 
 //

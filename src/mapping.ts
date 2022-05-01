@@ -1,4 +1,5 @@
 import { Address, BigInt, ethereum, log } from "@graphprotocol/graph-ts";
+import { NewReserveFactor } from "../generated/Comptroller/CToken";
 import {
   Account,
   Borrow,
@@ -86,4 +87,23 @@ export function templateGetOrCreateProtocol(
     protocol.save();
   }
   return protocol;
+}
+
+//
+//
+// event.params
+// - oldReserveFactorMantissa
+// - newReserveFactorMantissa
+export function templateHandleNewReserveFactor(event: NewReserveFactor): void {
+  let marketID = event.address.toHexString();
+  let market = Market.load(marketID);
+  if (market == null) {
+    log.warning("[handleNewReserveFactor] Market not found: {}", [marketID]);
+    return;
+  }
+  let reserveFactor = event.params.newReserveFactorMantissa
+    .toBigDecimal()
+    .div(mantissaFactorBD);
+  market._reserveFactor = reserveFactor;
+  market.save();
 }
