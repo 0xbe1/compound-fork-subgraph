@@ -1,4 +1,5 @@
 import { Address, BigInt, ethereum, log } from "@graphprotocol/graph-ts";
+import { NewPriceOracle } from "../generated/Comptroller/Comptroller";
 import { NewReserveFactor } from "../generated/Comptroller/CToken";
 import {
   Account,
@@ -106,4 +107,17 @@ export function templateHandleNewReserveFactor(event: NewReserveFactor): void {
     .div(mantissaFactorBD);
   market._reserveFactor = reserveFactor;
   market.save();
+}
+
+//
+//
+// event.params
+// - oldPriceOracle
+// - newPriceOracle
+export function templateHandleNewPriceOracle(
+  protocol: LendingProtocol,
+  event: NewPriceOracle
+): void {
+  protocol._priceOracle = event.params.newPriceOracle.toHexString();
+  protocol.save();
 }

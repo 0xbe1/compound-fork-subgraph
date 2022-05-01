@@ -10,7 +10,7 @@ import {
   MarketListed,
   NewCollateralFactor,
   NewLiquidationIncentive,
-  NewPriceOracle,
+  // NewPriceOracle,
 } from "../generated/Comptroller/Comptroller";
 import {
   AccrueInterest,
@@ -19,6 +19,7 @@ import {
   // NewReserveFactor,
 } from "../generated/Comptroller/CToken";
 import { NewReserveFactor } from "../../generated/Comptroller/CToken";
+import { NewPriceOracle } from "../../generated/Comptroller/Comptroller";
 import { CToken as CTokenTemplate } from "../generated/templates";
 import { ERC20 } from "../generated/Comptroller/ERC20";
 import {
@@ -79,6 +80,7 @@ import {
   ProtocolData,
   templateGetOrCreateProtocol,
   templateHandleNewReserveFactor,
+  templateHandleNewPriceOracle,
 } from "../../src/mapping";
 
 enum EventType {
@@ -96,8 +98,7 @@ enum EventType {
 // - newPriceOracle
 export function handleNewPriceOracle(event: NewPriceOracle): void {
   let protocol = getOrCreateProtocol();
-  protocol._priceOracle = event.params.newPriceOracle.toHexString();
-  protocol.save();
+  templateHandleNewPriceOracle(protocol, event);
 }
 
 //
