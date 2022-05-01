@@ -21,7 +21,6 @@ export let MFAMAddr = Address.fromString(
 // maybe we could find a better way to get this data rather than hardcoding it
 export const BLOCKS_PER_DAY = 3600 as i32;
 
-
 export const nativeToken = new TokenData(
   Address.fromString("0x0000000000000000000000000000000000000000"),
   "MOVR",

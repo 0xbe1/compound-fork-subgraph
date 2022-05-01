@@ -1,6 +1,8 @@
 import { Address, BigInt, ethereum, log } from "@graphprotocol/graph-ts";
 import {
   MarketListed,
+  NewCollateralFactor,
+  NewLiquidationIncentive,
   NewPriceOracle,
 } from "../generated/Comptroller/Comptroller";
 import { NewReserveFactor } from "../generated/Comptroller/CToken";
@@ -126,6 +128,58 @@ export function templateHandleNewReserveFactor(event: NewReserveFactor): void {
     .div(mantissaFactorBD);
   market._reserveFactor = reserveFactor;
   market.save();
+}
+
+//
+//
+// event.params.cToken:
+// event.params.oldCollateralFactorMantissa:
+// event.params.newCollateralFactorMantissa:
+export function templateHandleNewCollateralFactor(
+  event: NewCollateralFactor
+): void {
+  let marketID = event.params.cToken.toHexString();
+  let market = Market.load(marketID);
+  if (market == null) {
+    log.warning("[handleNewCollateralFactor] Market not found: {}", [marketID]);
+    return;
+  }
+  let collateralFactor = event.params.newCollateralFactorMantissa
+    .toBigDecimal()
+    .div(mantissaFactorBD)
+    .times(BIGDECIMAL_HUNDRED);
+  market.maximumLTV = collateralFactor;
+  market.liquidationThreshold = collateralFactor;
+  market.save();
+}
+
+//
+//
+// event.params.oldLiquidationIncentiveMantissa
+// event.params.newLiquidationIncentiveMantissa
+export function templateHandleNewLiquidationIncentive(
+  protocol: LendingProtocol,
+  event: NewLiquidationIncentive
+): void {
+  let liquidationIncentive = event.params.newLiquidationIncentiveMantissa
+    .toBigDecimal()
+    .div(mantissaFactorBD)
+    .times(BIGDECIMAL_HUNDRED);
+  protocol._liquidationIncentive = liquidationIncentive;
+  protocol.save();
+
+  for (let i = 0; i < protocol._marketIDs.length; i++) {
+    let market = Market.load(protocol.markets[i]);
+    if (!market) {
+      log.warning("[handleNewLiquidationIncentive] Market not found: {}", [
+        protocol.markets[i],
+      ]);
+      // best effort
+      continue;
+    }
+    market.liquidationPenalty = liquidationIncentive;
+    market.save();
+  }
 }
 
 //

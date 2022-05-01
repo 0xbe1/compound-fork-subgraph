@@ -8,8 +8,8 @@ import {
 import {
   Comptroller,
   // MarketListed,
-  NewCollateralFactor,
-  NewLiquidationIncentive,
+  // NewCollateralFactor,
+  // NewLiquidationIncentive,
   // NewPriceOracle,
 } from "../generated/Comptroller/Comptroller";
 import {
@@ -19,7 +19,12 @@ import {
   // NewReserveFactor,
 } from "../generated/Comptroller/CToken";
 import { NewReserveFactor } from "../../generated/Comptroller/CToken";
-import { NewPriceOracle, MarketListed } from "../../generated/Comptroller/Comptroller";
+import {
+  NewPriceOracle,
+  MarketListed,
+  NewCollateralFactor,
+  NewLiquidationIncentive,
+} from "../../generated/Comptroller/Comptroller";
 import { CToken as CTokenTemplate } from "../generated/templates";
 import { ERC20 } from "../generated/Comptroller/ERC20";
 import {
@@ -80,10 +85,12 @@ import {
   ProtocolData,
   templateGetOrCreateProtocol,
   templateHandleNewReserveFactor,
+  templateHandleNewCollateralFactor,
   templateHandleNewPriceOracle,
   templateHandleMarketListed,
   MarketListedData,
   TokenData,
+  templateHandleNewLiquidationIncentive,
 } from "../../src/mapping";
 
 enum EventType {
@@ -165,54 +172,15 @@ export function handleMarketListed(event: MarketListed): void {
   );
 }
 
-//
-//
-// event.params.cToken:
-// event.params.oldCollateralFactorMantissa:
-// event.params.newCollateralFactorMantissa:
 export function handleNewCollateralFactor(event: NewCollateralFactor): void {
-  let marketID = event.params.cToken.toHexString();
-  let market = Market.load(marketID);
-  if (market == null) {
-    log.warning("[handleNewCollateralFactor] Market not found: {}", [marketID]);
-    return;
-  }
-  let collateralFactor = event.params.newCollateralFactorMantissa
-    .toBigDecimal()
-    .div(mantissaFactorBD)
-    .times(BIGDECIMAL_HUNDRED);
-  market.maximumLTV = collateralFactor;
-  market.liquidationThreshold = collateralFactor;
-  market.save();
+  templateHandleNewCollateralFactor(event);
 }
 
-//
-//
-// event.params.oldLiquidationIncentiveMantissa
-// event.params.newLiquidationIncentiveMantissa
 export function handleNewLiquidationIncentive(
   event: NewLiquidationIncentive
 ): void {
   let protocol = getOrCreateProtocol();
-  let liquidationIncentive = event.params.newLiquidationIncentiveMantissa
-    .toBigDecimal()
-    .div(mantissaFactorBD)
-    .times(BIGDECIMAL_HUNDRED);
-  protocol._liquidationIncentive = liquidationIncentive;
-  protocol.save();
-
-  for (let i = 0; i < protocol._marketIDs.length; i++) {
-    let market = Market.load(protocol.markets[i]);
-    if (!market) {
-      log.warning("[handleNewLiquidationIncentive] Market not found: {}", [
-        protocol.markets[i],
-      ]);
-      // best effort
-      continue;
-    }
-    market.liquidationPenalty = liquidationIncentive;
-    market.save();
-  }
+  templateHandleNewLiquidationIncentive(protocol, event);
 }
 
 export function handleNewReserveFactor(event: NewReserveFactor): void {

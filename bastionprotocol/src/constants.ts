@@ -1,6 +1,6 @@
 import { Address } from "@graphprotocol/graph-ts";
 import { cTokenDecimals } from "../../src/constants";
-import { TokenData } from "../../src/mapping"
+import { TokenData } from "../../src/mapping";
 
 //////////////////////////////
 /////     Addresses      /////
