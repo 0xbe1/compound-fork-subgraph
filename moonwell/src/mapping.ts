@@ -99,9 +99,9 @@ export function handleNewPriceOracle(event: NewPriceOracle): void {
 //
 // event.params.cToken: The address of the market (token) to list
 export function handleMarketListed(event: MarketListed): void {
-  CTokenTemplate.create(event.params.mToken);
+  CTokenTemplate.create(event.params.cToken);
 
-  let cTokenAddr = event.params.mToken;
+  let cTokenAddr = event.params.cToken;
   let cToken = Token.load(cTokenAddr.toHexString());
   if (cToken != null) {
     return;
@@ -111,7 +111,7 @@ export function handleMarketListed(event: MarketListed): void {
   //
   // create cToken
   //
-  let cTokenContract = CToken.bind(event.params.mToken);
+  let cTokenContract = CToken.bind(event.params.cToken);
 
   // get underlying token
   let underlyingTokenAddr: Address;
@@ -315,7 +315,7 @@ export function handleMarketListed(event: MarketListed): void {
 // event.params.oldCollateralFactorMantissa:
 // event.params.newCollateralFactorMantissa:
 export function handleNewCollateralFactor(event: NewCollateralFactor): void {
-  let marketID = event.params.mToken.toHexString();
+  let marketID = event.params.cToken.toHexString();
   let market = Market.load(marketID);
   if (market == null) {
     log.warning("[handleNewCollateralFactor] Market not found: {}", [marketID]);

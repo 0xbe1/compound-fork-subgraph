@@ -19,11 +19,11 @@ dataSources:
         - Token
       abis:
         - name: Comptroller
-          file: ./abis/Comptroller.json
+          file: ../abis/Comptroller.json
         - name: CToken
-          file: ./abis/CToken.json
+          file: ../abis/CToken.json
         - name: ERC20
-          file: ./abis/ERC20.json
+          file: ../abis/ERC20.json
       eventHandlers:
         - event: MarketListed(address)
           handler: handleMarketListed
@@ -52,13 +52,13 @@ templates:
         - Liquidate
       abis:
         - name: CToken
-          file: ./abis/CToken.json
+          file: ../abis/CToken.json
         - name: Comptroller
-          file: ./abis/Comptroller.json
+          file: ../abis/Comptroller.json
         - name: ERC20
-          file: ./abis/ERC20.json
+          file: ../abis/ERC20.json
         - name: PriceOracle
-          file: ./abis/PriceOracle.json
+          file: ../abis/PriceOracle.json
       eventHandlers:
         - event: Mint(address,uint256,uint256)
           handler: handleMint
