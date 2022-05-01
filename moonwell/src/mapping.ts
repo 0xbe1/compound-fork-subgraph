@@ -7,7 +7,7 @@ import {
 } from "@graphprotocol/graph-ts";
 import {
   Comptroller,
-  MarketListed,
+  // MarketListed,
   NewCollateralFactor,
   NewLiquidationIncentive,
   // NewPriceOracle,
@@ -19,7 +19,7 @@ import {
   // NewReserveFactor,
 } from "../generated/Comptroller/CToken";
 import { NewReserveFactor } from "../../generated/Comptroller/CToken";
-import { NewPriceOracle } from "../../generated/Comptroller/Comptroller";
+import { NewPriceOracle, MarketListed } from "../../generated/Comptroller/Comptroller";
 import { CToken as CTokenTemplate } from "../generated/templates";
 import { ERC20 } from "../generated/Comptroller/ERC20";
 import {
@@ -81,6 +81,9 @@ import {
   templateGetOrCreateProtocol,
   templateHandleNewReserveFactor,
   templateHandleNewPriceOracle,
+  templateHandleMarketListed,
+  MarketListedData,
+  TokenData,
 } from "../../src/mapping";
 
 enum EventType {
@@ -114,205 +117,52 @@ export function handleMarketListed(event: MarketListed): void {
   }
   // this is a new cToken, a new underlying token, and a new market
 
-  //
-  // create cToken
-  //
-  let cTokenContract = CToken.bind(event.params.cToken);
-
-  // get underlying token
-  let underlyingTokenAddr: Address;
-
-  // if we cannot fetch the underlying token of a non-cETH cToken
-  // then fail early
-  if (cTokenAddr == nativeCToken.address) {
-    underlyingTokenAddr = nativeToken.address;
-  } else {
-    let underlyingTokenAddrResult = cTokenContract.try_underlying();
-    if (underlyingTokenAddrResult.reverted) {
-      log.warning(
-        "[handleMarketListed] could not fetch underlying token of cToken: {}",
-        [cTokenAddr.toHexString()]
-      );
-      return;
-    }
-    underlyingTokenAddr = underlyingTokenAddrResult.value;
-  }
-
-  cToken = new Token(cTokenAddr.toHexString());
-  if (cTokenAddr == nativeCToken.address) {
-    cToken.name = nativeCToken.name;
-    cToken.symbol = nativeCToken.symbol;
-    cToken.decimals = nativeCToken.decimals;
-  } else {
-    cToken.name = getOrElse<string>(cTokenContract.try_name(), "unknown");
-    cToken.symbol = getOrElse<string>(cTokenContract.try_symbol(), "unknown");
-    cToken.decimals = cTokenDecimals;
-  }
-  cToken.save();
-
-  //
-  // create underlying token
-  //
-  let underlyingToken = new Token(underlyingTokenAddr.toHexString());
-  if (underlyingTokenAddr == nativeToken.address) {
-    // don't want to call CEther contract, hardcode instead
-    underlyingToken.name = nativeToken.name;
-    underlyingToken.symbol = nativeToken.symbol;
-    underlyingToken.decimals = nativeToken.decimals;
-  } else {
-    let underlyingTokenContract = ERC20.bind(underlyingTokenAddr);
-    underlyingToken.name = getOrElse<string>(
-      underlyingTokenContract.try_name(),
-      "unknown"
-    );
-    underlyingToken.symbol = getOrElse<string>(
-      underlyingTokenContract.try_symbol(),
-      "unknown"
-    );
-    underlyingToken.decimals = getOrElse<i32>(
-      underlyingTokenContract.try_decimals(),
-      0
-    );
-  }
-  underlyingToken.save();
-
-  //
-  // create market
-  //
-  let market = new Market(cTokenAddr.toHexString());
   let protocol = getOrCreateProtocol();
-  market.name = cToken.name;
-  market.protocol = protocol.id;
-  market.inputToken = underlyingToken.id;
-  market.outputToken = cToken.id;
-
-  // assumptions: reward 0 is MFAM, reward 1 is MOVR
-  // let MFAMToken = Token.load(MFAMAddr.toHexString());
-  // if (!MFAMToken) {
-  //   MFAMToken = new Token(MFAMAddr.toHexString());
-  //   MFAMToken.name = "MFAM";
-  //   MFAMToken.symbol = "MFAM";
-  //   MFAMToken.decimals = 18;
-  //   MFAMToken.save();
-  // }
-  // let MOVRToken = Token.load(MOVRAddr.toHexString());
-  // if (!MOVRToken) {
-  //   MOVRToken = new Token(MOVRAddr.toHexString());
-  //   MOVRToken.name = "MOVR";
-  //   MOVRToken.symbol = "MOVR";
-  //   MOVRToken.decimals = 18;
-  //   MOVRToken.save();
-  // }
-
-  // let borrowRewardToken0 = RewardToken.load(
-  //   InterestRateSide.BORROWER.concat("-").concat(MFAMAddr.toHexString())
-  // );
-  // if (!borrowRewardToken0) {
-  //   borrowRewardToken0 = new RewardToken(
-  //     InterestRateSide.BORROWER.concat("-").concat(MFAMAddr.toHexString())
-  //   );
-  //   borrowRewardToken0.token = MFAMToken.id;
-  //   borrowRewardToken0.type = RewardTokenType.BORROW;
-  //   borrowRewardToken0.save();
-  // }
-
-  // let borrowRewardToken1 = RewardToken.load(
-  //   InterestRateSide.BORROWER.concat("-").concat(MOVRAddr.toHexString())
-  // );
-  // if (!borrowRewardToken1) {
-  //   borrowRewardToken1 = new RewardToken(
-  //     InterestRateSide.BORROWER.concat("-").concat(MOVRAddr.toHexString())
-  //   );
-  //   borrowRewardToken1.token = MOVRToken.id;
-  //   borrowRewardToken1.type = RewardTokenType.BORROW;
-  //   borrowRewardToken1.save();
-  // }
-
-  // let supplyRewardToken0 = RewardToken.load(
-  //   InterestRateSide.LENDER.concat("-").concat(MFAMAddr.toHexString())
-  // );
-  // if (!supplyRewardToken0) {
-  //   supplyRewardToken0 = new RewardToken(
-  //     InterestRateSide.LENDER.concat("-").concat(MFAMAddr.toHexString())
-  //   );
-  //   supplyRewardToken0.token = MFAMToken.id;
-  //   supplyRewardToken0.type = RewardTokenType.DEPOSIT;
-  //   supplyRewardToken0.save();
-  // }
-
-  // let supplyRewardToken1 = RewardToken.load(
-  //   InterestRateSide.LENDER.concat("-").concat(MOVRAddr.toHexString())
-  // );
-  // if (!supplyRewardToken1) {
-  //   supplyRewardToken1 = new RewardToken(
-  //     InterestRateSide.LENDER.concat("-").concat(MOVRAddr.toHexString())
-  //   );
-  //   supplyRewardToken1.token = MOVRToken.id;
-  //   supplyRewardToken1.type = RewardTokenType.DEPOSIT;
-  //   supplyRewardToken1.save();
-  // }
-
-  // market.rewardTokens = [
-  //   borrowRewardToken0.id,
-  //   borrowRewardToken1.id,
-  //   supplyRewardToken0.id,
-  //   supplyRewardToken1.id,
-  // ];
-  // market.rewardTokenEmissionsAmount = [
-  //   BIGINT_ZERO,
-  //   BIGINT_ZERO,
-  //   BIGINT_ZERO,
-  //   BIGINT_ZERO,
-  // ];
-  // market.rewardTokenEmissionsUSD = [
-  //   BIGDECIMAL_ZERO,
-  //   BIGDECIMAL_ZERO,
-  //   BIGDECIMAL_ZERO,
-  //   BIGDECIMAL_ZERO,
-  // ];
-
-  let supplyInterestRate = new InterestRate(
-    InterestRateSide.LENDER.concat("-")
-      .concat(InterestRateType.VARIABLE)
-      .concat("-")
-      .concat(market.id)
+  let cTokenContract = CToken.bind(event.params.cToken);
+  let cTokenReserveFactorMantissa = getOrElse<BigInt>(
+    cTokenContract.try_reserveFactorMantissa(),
+    BIGINT_ZERO
   );
-  supplyInterestRate.side = InterestRateSide.LENDER;
-  supplyInterestRate.type = InterestRateType.VARIABLE;
-  supplyInterestRate.save();
-  let borrowInterestRate = new InterestRate(
-    InterestRateSide.BORROWER.concat("-")
-      .concat(InterestRateType.VARIABLE)
-      .concat("-")
-      .concat(market.id)
-  );
-  borrowInterestRate.side = InterestRateSide.BORROWER;
-  borrowInterestRate.type = InterestRateType.VARIABLE;
-  borrowInterestRate.save();
-  market.rates = [supplyInterestRate.id, borrowInterestRate.id];
-  market.isActive = true;
-  market.canUseAsCollateral = true;
-  market.canBorrowFrom = true;
-  market.liquidationPenalty = protocol._liquidationIncentive;
-
-  let reserveFactorMantissaResult = cTokenContract.try_reserveFactorMantissa();
-  if (!reserveFactorMantissaResult.reverted) {
-    market._reserveFactor = reserveFactorMantissaResult.value
-      .toBigDecimal()
-      .div(mantissaFactorBD);
+  if (cTokenAddr == nativeCToken.address) {
+    let marketListedData = new MarketListedData(
+      protocol,
+      nativeToken,
+      nativeCToken,
+      cTokenReserveFactorMantissa
+    );
+    templateHandleMarketListed(marketListedData, event);
+    return;
   }
 
-  market.createdTimestamp = event.block.timestamp;
-  market.createdBlockNumber = event.block.number;
-  market.save();
-
-  //
-  // update protocol
-  //
-  let marketIDs = protocol._marketIDs;
-  marketIDs.push(market.id);
-  protocol._marketIDs = marketIDs;
-  protocol.save();
+  let underlyingTokenAddrResult = cTokenContract.try_underlying();
+  if (underlyingTokenAddrResult.reverted) {
+    log.warning(
+      "[handleMarketListed] could not fetch underlying token of cToken: {}",
+      [cTokenAddr.toHexString()]
+    );
+    return;
+  }
+  let underlyingTokenAddr = underlyingTokenAddrResult.value;
+  let underlyingTokenContract = ERC20.bind(underlyingTokenAddr);
+  templateHandleMarketListed(
+    new MarketListedData(
+      protocol,
+      new TokenData(
+        underlyingTokenAddr,
+        getOrElse<string>(cTokenContract.try_name(), "unknown"),
+        getOrElse<string>(cTokenContract.try_symbol(), "unknown"),
+        cTokenDecimals
+      ),
+      new TokenData(
+        cTokenAddr,
+        getOrElse<string>(underlyingTokenContract.try_name(), "unknown"),
+        getOrElse<string>(underlyingTokenContract.try_symbol(), "unknown"),
+        getOrElse<i32>(underlyingTokenContract.try_decimals(), 0)
+      ),
+      cTokenReserveFactorMantissa
+    ),
+    event
+  );
 }
 
 //

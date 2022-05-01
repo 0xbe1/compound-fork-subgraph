@@ -1,5 +1,6 @@
 import { Address } from "@graphprotocol/graph-ts";
 import { cTokenDecimals } from "../../src/constants";
+import { TokenData } from "../../src/mapping"
 
 //////////////////////////////
 /////     Addresses      /////
@@ -11,19 +12,6 @@ export let comptrollerAddr = Address.fromString(
 
 // TODO: about 2 seconds per block
 export const BLOCKS_PER_DAY = (24 * 60 * 60) / 2;
-
-export class TokenData {
-  address: Address;
-  name: string;
-  symbol: string;
-  decimals: i32;
-  constructor(address: Address, name: string, symbol: string, decimals: i32) {
-    this.address = address;
-    this.name = name;
-    this.symbol = symbol;
-    this.decimals = decimals;
-  }
-}
 
 export const nativeToken = new TokenData(
   Address.fromString("0x0000000000000000000000000000000000000000"),
