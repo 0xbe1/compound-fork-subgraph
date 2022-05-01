@@ -43,7 +43,7 @@ import {
   InterestRate,
   MarketHourlySnapshot,
   UsageMetricsHourlySnapshot,
-} from "../generated/schema";
+} from "../../generated/schema";
 import {
   BIGDECIMAL_ZERO,
   cTokenDecimals,
@@ -69,6 +69,10 @@ import {
   nativeToken,
 } from "./constants";
 import { PriceOracle } from "../generated/templates/CToken/PriceOracle";
+import {
+  templateGetOrCreateProtocol,
+  ProtocolData,
+} from "../../src/mapping"
 
 enum EventType {
   Deposit,
@@ -744,28 +748,18 @@ export function handleAccrueInterest(event: AccrueInterest): void {
 }
 
 function getOrCreateProtocol(): LendingProtocol {
-  let protocol = LendingProtocol.load(comptrollerAddr.toHexString());
-  if (!protocol) {
-    protocol = new LendingProtocol(comptrollerAddr.toHexString());
-    protocol.name = "Bastion Protocol";
-    protocol.slug = "bastion-protocol";
-    protocol.schemaVersion = "1.2.0";
-    protocol.subgraphVersion = "1.0.0";
-    protocol.methodologyVersion = "1.0.0";
-    protocol.network = Network.AURORA;
-    protocol.type = ProtocolType.LENDING;
-    protocol.lendingType = LendingType.POOLED;
-    protocol.riskType = RiskType.GLOBAL;
-
-    let comptroller = Comptroller.bind(comptrollerAddr);
-    protocol._liquidationIncentive = comptroller
-      .liquidationIncentiveMantissa()
-      .toBigDecimal()
-      .div(mantissaFactorBD)
-      .times(BIGDECIMAL_HUNDRED);
-    protocol.save();
-  }
-  return protocol;
+  let protocolData = new ProtocolData(
+    comptrollerAddr,
+    "Bastion Protocol",
+    "bastion-protocol",
+    "1.2.0",
+    "1.0.0",
+    "1.0.0",
+    Network.AURORA
+  )
+  let comptroller = Comptroller.bind(comptrollerAddr);
+  let liquidationIncentiveMantissaResult = comptroller.try_liquidationIncentiveMantissa()
+  return templateGetOrCreateProtocol(protocolData, liquidationIncentiveMantissaResult) as LendingProtocol
 }
 
 function updateMarket(

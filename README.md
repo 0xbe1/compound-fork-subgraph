@@ -23,7 +23,7 @@ yarn deploy 0xbe1/moonwell-subgraph
 
 ## TODO
 
-- [ ] schema.ts under root/generated
+- [ ] generate schema.ts under root/generated
 - [ ] Share mapping.ts
 - [ ] Remove package.json under moonwell/
 - [ ] subgraph.template.yaml
