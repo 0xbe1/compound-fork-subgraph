@@ -130,7 +130,7 @@ export function handleMarketListed(event: MarketListed): void {
   if (cTokenAddr == nativeCToken.address) {
     cToken.name = nativeCToken.name;
     cToken.symbol = nativeCToken.symbol;
-    cToken.decimals = cTokenDecimals;
+    cToken.decimals = nativeCToken.decimals;
   } else {
     cToken.name = getOrElse<string>(cTokenContract.try_name(), "unknown");
     cToken.symbol = getOrElse<string>(cTokenContract.try_symbol(), "unknown");
@@ -146,7 +146,7 @@ export function handleMarketListed(event: MarketListed): void {
     // don't want to call CEther contract, hardcode instead
     underlyingToken.name = nativeToken.name;
     underlyingToken.symbol = nativeToken.symbol;
-    underlyingToken.decimals = 18;
+    underlyingToken.decimals = nativeToken.decimals;
   } else {
     let underlyingTokenContract = ERC20.bind(underlyingTokenAddr);
     underlyingToken.name = getOrElse<string>(
