@@ -1,5 +1,8 @@
 codegen:
-	yarn codegen $(subgraph)/subgraph.yaml -o $(subgraph)/generated
+	graph codegen $(subgraph)/subgraph.yaml -o $(subgraph)/generated
 
 build:
-	yarn build $(subgraph)/subgraph.yaml -o $(subgraph)/build
+	graph build $(subgraph)/subgraph.yaml -o $(subgraph)/build
+
+deploy:
+	graph deploy $(subgraph-name) $(subgraph)/subgraph.yaml --node https://api.thegraph.com/deploy/

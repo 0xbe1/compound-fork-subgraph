@@ -17,8 +17,7 @@ subgraph=moonwell make build
 deploy
 
 ```
-cd moonwell
-yarn deploy 0xbe1/moonwell-subgraph
+subgraph-name=0xbe1/moonwell-subgraph subgraph=moonwell make deploy
 ```
 
 ## Project Layout
