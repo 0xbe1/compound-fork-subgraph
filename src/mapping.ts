@@ -77,6 +77,7 @@ export class ProtocolData {
   subgraphVersion: string;
   methodologyVersion: string;
   network: string;
+  liquidationIncentiveMantissaResult: ethereum.CallResult<BigInt>;
   constructor(
     comptrollerAddr: Address,
     name: string,
@@ -84,7 +85,8 @@ export class ProtocolData {
     schemaVersion: string,
     subgraphVersion: string,
     methodologyVersion: string,
-    network: string
+    network: string,
+    liquidationIncentiveMantissaResult: ethereum.CallResult<BigInt>
   ) {
     this.comptrollerAddr = comptrollerAddr;
     this.name = name;
@@ -93,6 +95,7 @@ export class ProtocolData {
     this.subgraphVersion = subgraphVersion;
     this.methodologyVersion = methodologyVersion;
     this.network = network;
+    this.liquidationIncentiveMantissaResult = liquidationIncentiveMantissaResult;
   }
 }
 
@@ -158,8 +161,7 @@ export class UpdateMarketData {
 }
 
 export function templateGetOrCreateProtocol(
-  protocolData: ProtocolData,
-  liquidationIncentiveMantissaResult: ethereum.CallResult<BigInt>
+  protocolData: ProtocolData
 ): LendingProtocol {
   let protocol = LendingProtocol.load(
     protocolData.comptrollerAddr.toHexString()
@@ -176,13 +178,13 @@ export function templateGetOrCreateProtocol(
     protocol.lendingType = LendingType.POOLED;
     protocol.riskType = RiskType.GLOBAL;
 
-    if (liquidationIncentiveMantissaResult.reverted) {
+    if (protocolData.liquidationIncentiveMantissaResult.reverted) {
       log.warning(
         "[getOrCreateProtocol] liquidationIncentiveMantissaResult reverted",
         []
       );
     } else {
-      protocol._liquidationIncentive = liquidationIncentiveMantissaResult.value
+      protocol._liquidationIncentive = protocolData.liquidationIncentiveMantissaResult.value
         .toBigDecimal()
         .div(mantissaFactorBD)
         .times(BIGDECIMAL_HUNDRED);

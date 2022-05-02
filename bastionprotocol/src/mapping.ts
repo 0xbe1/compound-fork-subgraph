@@ -178,6 +178,7 @@ export function handleAccrueInterest(event: AccrueInterest): void {
 }
 
 function getOrCreateProtocol(): LendingProtocol {
+  let comptroller = Comptroller.bind(comptrollerAddr);
   let protocolData = new ProtocolData(
     comptrollerAddr,
     "Bastion Protocol",
@@ -185,11 +186,8 @@ function getOrCreateProtocol(): LendingProtocol {
     "1.2.0",
     "1.0.0",
     "1.0.0",
-    Network.AURORA
-  );
-  let comptroller = Comptroller.bind(comptrollerAddr);
-  return templateGetOrCreateProtocol(
-    protocolData,
+    Network.AURORA,
     comptroller.try_liquidationIncentiveMantissa()
   );
+  return templateGetOrCreateProtocol(protocolData);
 }

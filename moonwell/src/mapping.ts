@@ -178,6 +178,7 @@ export function handleAccrueInterest(event: AccrueInterest): void {
 }
 
 function getOrCreateProtocol(): LendingProtocol {
+  let comptroller = Comptroller.bind(comptrollerAddr);
   let protocolData = new ProtocolData(
     comptrollerAddr,
     "Moonwell",
@@ -185,11 +186,9 @@ function getOrCreateProtocol(): LendingProtocol {
     "1.2.0",
     "1.0.0",
     "1.0.0",
-    Network.MOONRIVER
-  );
-  let comptroller = Comptroller.bind(comptrollerAddr);
-  return templateGetOrCreateProtocol(
-    protocolData,
+    Network.MOONRIVER,
     comptroller.try_liquidationIncentiveMantissa()
   );
+  
+  return templateGetOrCreateProtocol(protocolData);
 }
