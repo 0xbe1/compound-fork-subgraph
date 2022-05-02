@@ -1,5 +1,15 @@
 # Compound Fork Subgraph
 
+## Deployments
+
+### Moonwell
+
+https://thegraph.com/hosted-service/subgraph/0xbe1/moonwell-subgraph
+
+### Bastion Protocol
+
+https://thegraph.com/hosted-service/subgraph/0xbe1/bastionprotocol-subgraph
+
 ## Development
 
 codegen
