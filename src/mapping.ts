@@ -18,6 +18,7 @@ import {
   Borrow as BorrowEvent,
   RepayBorrow,
   LiquidateBorrow,
+  AccrueInterest,
 } from "../generated/templates/CToken/CToken";
 import {
   Account,
@@ -40,14 +41,15 @@ import {
 import {
   BIGDECIMAL_HUNDRED,
   BIGDECIMAL_ZERO,
+  BIGINT_ZERO,
   cTokenDecimals,
   cTokenDecimalsBD,
   exponentToBigDecimal,
   InterestRateSide,
   InterestRateType,
   LendingType,
+  mantissaFactor,
   mantissaFactorBD,
-  Network,
   ProtocolType,
   RiskType,
   SECONDS_PER_DAY,
@@ -60,6 +62,11 @@ enum EventType {
   Borrow,
   Repay,
   Liquidate,
+}
+
+export enum AccruePer {
+  Block,
+  Timestamp,
 }
 
 export class ProtocolData {
@@ -99,6 +106,54 @@ export class TokenData {
     this.name = name;
     this.symbol = symbol;
     this.decimals = decimals;
+  }
+}
+
+export class MarketListedData {
+  protocol: LendingProtocol;
+  token: TokenData;
+  cToken: TokenData;
+  cTokenReserveFactorMantissa: BigInt;
+  constructor(
+    protocol: LendingProtocol,
+    token: TokenData,
+    cToken: TokenData,
+    cTokenReserveFactorMantissa: BigInt
+  ) {
+    this.protocol = protocol;
+    this.token = token;
+    this.cToken = cToken;
+    this.cTokenReserveFactorMantissa = cTokenReserveFactorMantissa;
+  }
+}
+
+export class UpdateMarketData {
+  totalSupplyResult: ethereum.CallResult<BigInt>;
+  exchangeRateStoredResult: ethereum.CallResult<BigInt>;
+  totalBorrowsResult: ethereum.CallResult<BigInt>;
+  supplyRateResult: ethereum.CallResult<BigInt>;
+  borrowRateResult: ethereum.CallResult<BigInt>;
+  accruePer: AccruePer;
+  getUnderlyingPriceResult: ethereum.CallResult<BigInt>;
+  unitPerYear: i32;
+  constructor(
+    totalSupplyResult: ethereum.CallResult<BigInt>,
+    exchangeRateStoredResult: ethereum.CallResult<BigInt>,
+    totalBorrowsResult: ethereum.CallResult<BigInt>,
+    supplyRateResult: ethereum.CallResult<BigInt>,
+    borrowRateResult: ethereum.CallResult<BigInt>,
+    accruePer: AccruePer,
+    getUnderlyingPriceResult: ethereum.CallResult<BigInt>,
+    unitPerYear: i32
+  ) {
+    this.totalSupplyResult = totalSupplyResult;
+    this.exchangeRateStoredResult = exchangeRateStoredResult;
+    this.totalBorrowsResult = totalBorrowsResult;
+    this.supplyRateResult = supplyRateResult;
+    this.borrowRateResult = borrowRateResult;
+    this.accruePer = accruePer;
+    this.getUnderlyingPriceResult = getUnderlyingPriceResult;
+    this.unitPerYear = unitPerYear;
   }
 }
 
@@ -219,24 +274,6 @@ export function templateHandleNewPriceOracle(
 ): void {
   protocol._priceOracle = event.params.newPriceOracle.toHexString();
   protocol.save();
-}
-
-export class MarketListedData {
-  protocol: LendingProtocol;
-  token: TokenData;
-  cToken: TokenData;
-  cTokenReserveFactorMantissa: BigInt;
-  constructor(
-    protocol: LendingProtocol,
-    token: TokenData,
-    cToken: TokenData,
-    cTokenReserveFactorMantissa: BigInt
-  ) {
-    this.protocol = protocol;
-    this.token = token;
-    this.cToken = cToken;
-    this.cTokenReserveFactorMantissa = cTokenReserveFactorMantissa;
-  }
 }
 
 //
@@ -806,6 +843,51 @@ export function templateHandleLiquidateBorrow(
   );
 }
 
+// This function is called whenever mint, redeem, borrow, repay, liquidateBorrow happens
+export function templateHandleAccrueInterest(
+  updateMarketData: UpdateMarketData,
+  comptrollerAddr: Address,
+  event: AccrueInterest
+): void {
+  let marketID = event.address.toHexString();
+  let market = Market.load(marketID);
+  if (!market) {
+    log.warning("[handleAccrueInterest] Market not found: {}", [marketID]);
+    return;
+  }
+
+  if (
+    updateMarketData.accruePer == AccruePer.Timestamp &&
+    market._accrualTimestamp.ge(event.block.timestamp)
+  ) {
+    return;
+  }
+  if (
+    updateMarketData.accruePer == AccruePer.Block &&
+    market._accrualBlockNumber.ge(event.block.number)
+  ) {
+    return;
+  }
+
+  updateMarket(
+    updateMarketData,
+    marketID,
+    event.block.number,
+    event.block.timestamp
+  );
+  updateProtocol(comptrollerAddr);
+  snapshotMarket(
+    event.address.toHexString(),
+    event.block.number,
+    event.block.timestamp
+  );
+  snapshotFinancials(
+    comptrollerAddr,
+    event.block.number,
+    event.block.timestamp
+  );
+}
+
 function snapshotMarket(
   marketID: string,
   blockNumber: BigInt,
@@ -1133,6 +1215,315 @@ function updateMarketSnapshots(
   }
 }
 
+function updateMarket(
+  updateMarketData: UpdateMarketData,
+  marketID: string,
+  blockNumber: BigInt,
+  blockTimestamp: BigInt
+): void {
+  let market = Market.load(marketID);
+  if (!market) {
+    log.warning("[updateMarket] Market not found: {}", [marketID]);
+    return;
+  }
+
+  let underlyingToken = Token.load(market.inputToken);
+  if (!underlyingToken) {
+    log.warning("[updateMarket] Underlying token not found: {}", [
+      market.inputToken,
+    ]);
+    return;
+  }
+
+  let underlyingTokenPriceUSD = getTokenPriceUSD(
+    updateMarketData.getUnderlyingPriceResult,
+    underlyingToken.decimals
+  );
+
+  underlyingToken.lastPriceUSD = underlyingTokenPriceUSD;
+  underlyingToken.lastPriceBlockNumber = blockNumber;
+  underlyingToken.save();
+
+  market.inputTokenPriceUSD = underlyingTokenPriceUSD;
+
+  // let cTokenContract = CToken.bind(marketAddress);
+
+  // let totalSupplyResult = cTokenContract.try_totalSupply();
+  if (updateMarketData.totalSupplyResult.reverted) {
+    log.warning("[updateMarket] Failed to get totalSupply of Market {}", [
+      marketID,
+    ]);
+  } else {
+    market.outputTokenSupply = updateMarketData.totalSupplyResult.value;
+  }
+
+  let underlyingSupplyUSD = market.inputTokenBalance
+    .toBigDecimal()
+    .div(exponentToBigDecimal(underlyingToken.decimals))
+    .times(underlyingTokenPriceUSD);
+  market.totalValueLockedUSD = underlyingSupplyUSD;
+  market.totalDepositBalanceUSD = underlyingSupplyUSD;
+
+  // let exchangeRateResult = cTokenContract.try_exchangeRateStored();
+  if (updateMarketData.exchangeRateStoredResult.reverted) {
+    log.warning(
+      "[updateMarket] Failed to get exchangeRateStored of Market {}",
+      [marketID]
+    );
+  } else {
+    // Formula: check out "Interpreting Exchange Rates" in https://compound.finance/docs#protocol-math
+    let oneCTokenInUnderlying = updateMarketData.exchangeRateStoredResult.value
+      .toBigDecimal()
+      .div(
+        exponentToBigDecimal(
+          mantissaFactor + underlyingToken.decimals - cTokenDecimals
+        )
+      );
+    market.exchangeRate = oneCTokenInUnderlying;
+    market.outputTokenPriceUSD = oneCTokenInUnderlying.times(
+      underlyingTokenPriceUSD
+    );
+  }
+
+  // let totalBorrowsResult = cTokenContract.try_totalBorrows();
+  let totalBorrowUSD = BIGDECIMAL_ZERO;
+  if (updateMarketData.totalBorrowsResult.reverted) {
+    log.warning("[updateMarket] Failed to get totalBorrows of Market {}", [
+      marketID,
+    ]);
+  } else {
+    totalBorrowUSD = updateMarketData.totalBorrowsResult.value
+      .toBigDecimal()
+      .div(exponentToBigDecimal(underlyingToken.decimals))
+      .times(underlyingTokenPriceUSD);
+    market.totalBorrowBalanceUSD = totalBorrowUSD;
+  }
+
+  // let supplyRatePerTimestampResult = cTokenContract.try_supplyRatePerBlock();
+  if (updateMarketData.supplyRateResult.reverted) {
+    log.warning("[updateMarket] Failed to get supplyRate of Market {}", [
+      marketID,
+    ]);
+  } else {
+    setSupplyInterestRate(
+      marketID,
+      convertRatePerUnitToAPY(
+        updateMarketData.supplyRateResult.value,
+        updateMarketData.unitPerYear
+      )
+    );
+  }
+
+  // let borrowRatePerTimestampResult = cTokenContract.try_borrowRatePerBlock();
+  let borrowRatePerUnit = BIGDECIMAL_ZERO;
+  if (updateMarketData.borrowRateResult.reverted) {
+    log.warning("[updateMarket] Failed to get borrowRate of Market {}", [
+      marketID,
+    ]);
+  } else {
+    setBorrowInterestRate(
+      marketID,
+      convertRatePerUnitToAPY(
+        updateMarketData.borrowRateResult.value,
+        updateMarketData.unitPerYear
+      )
+    );
+
+    borrowRatePerUnit = updateMarketData.borrowRateResult.value
+      .toBigDecimal()
+      .div(mantissaFactorBD);
+  }
+
+  let totalRevenueUSDPerUnit = totalBorrowUSD.times(borrowRatePerUnit);
+  let delta = BIGINT_ZERO;
+  if (updateMarketData.accruePer == AccruePer.Block) {
+    delta = blockNumber.minus(market._accrualBlockNumber);
+  } else {
+    delta = blockTimestamp.minus(market._accrualTimestamp);
+  }
+  let totalRevenueUSDDelta = totalRevenueUSDPerUnit.times(
+    new BigDecimal(delta)
+  );
+  let protocolSideRevenueUSDDelta = totalRevenueUSDDelta.times(
+    market._reserveFactor
+  );
+  let supplySideRevenueUSDDelta = totalRevenueUSDDelta.minus(
+    protocolSideRevenueUSDDelta
+  );
+
+  market._cumulativeTotalRevenueUSD =
+    market._cumulativeTotalRevenueUSD.plus(totalRevenueUSDDelta);
+  market._cumulativeProtocolSideRevenueUSD =
+    market._cumulativeProtocolSideRevenueUSD.plus(protocolSideRevenueUSDDelta);
+  market._cumulativeSupplySideRevenueUSD =
+    market._cumulativeSupplySideRevenueUSD.plus(supplySideRevenueUSDDelta);
+
+  // update daily fields in snapshot
+  let snapshot = new MarketDailySnapshot(
+    getMarketDailySnapshotID(market.id, blockTimestamp.toI32())
+  );
+  snapshot._dailyTotalRevenueUSD =
+    snapshot._dailyTotalRevenueUSD.plus(totalRevenueUSDDelta);
+  snapshot._dailyProtocolSideRevenueUSD =
+    snapshot._dailyProtocolSideRevenueUSD.plus(protocolSideRevenueUSDDelta);
+  snapshot._dailySupplySideRevenueUSD =
+    snapshot._dailySupplySideRevenueUSD.plus(supplySideRevenueUSDDelta);
+
+  // rewards
+  // let comptroller = Comptroller.bind(comptrollerAddr);
+  // setMFAMReward(
+  //   market,
+  //   comptroller.try_borrowRewardSpeeds(0, marketAddress),
+  //   0
+  // );
+  // setMOVRReward(
+  //   market,
+  //   comptroller.try_borrowRewardSpeeds(1, marketAddress),
+  //   1
+  // );
+  // setMFAMReward(
+  //   market,
+  //   comptroller.try_supplyRewardSpeeds(0, marketAddress),
+  //   2
+  // );
+  // setMOVRReward(
+  //   market,
+  //   comptroller.try_supplyRewardSpeeds(1, marketAddress),
+  //   3
+  // );
+
+  market._accrualTimestamp = blockTimestamp;
+  market._accrualBlockNumber = blockNumber;
+  market.save();
+}
+
+function updateProtocol(comptrollerAddr: Address): void {
+  let protocol = LendingProtocol.load(comptrollerAddr.toHexString());
+  if (!protocol) {
+    log.error(
+      "[updateProtocol] Protocol not found, this SHOULD NOT happen",
+      []
+    );
+    return;
+  }
+
+  let totalValueLockedUSD = BIGDECIMAL_ZERO;
+  let totalDepositBalanceUSD = BIGDECIMAL_ZERO;
+  let totalBorrowBalanceUSD = BIGDECIMAL_ZERO;
+  let cumulativeBorrowUSD = BIGDECIMAL_ZERO;
+  let cumulativeDepositUSD = BIGDECIMAL_ZERO;
+  let cumulativeLiquidateUSD = BIGDECIMAL_ZERO;
+  let cumulativeTotalRevenueUSD = BIGDECIMAL_ZERO;
+  let cumulativeProtocolSideRevenueUSD = BIGDECIMAL_ZERO;
+  let cumulativeSupplySideRevenueUSD = BIGDECIMAL_ZERO;
+
+  for (let i = 0; i < protocol._marketIDs.length; i++) {
+    let market = Market.load(protocol._marketIDs[i]);
+    if (!market) {
+      log.warning("[updateProtocol] Market not found: {}", [
+        protocol._marketIDs[i],
+      ]);
+      // best effort
+      continue;
+    }
+    totalValueLockedUSD = totalValueLockedUSD.plus(market.totalValueLockedUSD);
+    totalDepositBalanceUSD = totalDepositBalanceUSD.plus(
+      market.totalDepositBalanceUSD
+    );
+    totalBorrowBalanceUSD = totalBorrowBalanceUSD.plus(
+      market.totalBorrowBalanceUSD
+    );
+    cumulativeBorrowUSD = cumulativeBorrowUSD.plus(market.cumulativeBorrowUSD);
+    cumulativeDepositUSD = cumulativeDepositUSD.plus(
+      market.cumulativeDepositUSD
+    );
+    cumulativeLiquidateUSD = cumulativeLiquidateUSD.plus(
+      market.cumulativeLiquidateUSD
+    );
+    cumulativeTotalRevenueUSD = cumulativeTotalRevenueUSD.plus(
+      market._cumulativeTotalRevenueUSD
+    );
+    cumulativeProtocolSideRevenueUSD = cumulativeProtocolSideRevenueUSD.plus(
+      market._cumulativeProtocolSideRevenueUSD
+    );
+    cumulativeSupplySideRevenueUSD = cumulativeSupplySideRevenueUSD.plus(
+      market._cumulativeSupplySideRevenueUSD
+    );
+  }
+  protocol.totalValueLockedUSD = totalValueLockedUSD;
+  protocol.totalDepositBalanceUSD = totalDepositBalanceUSD;
+  protocol.totalBorrowBalanceUSD = totalBorrowBalanceUSD;
+  protocol.cumulativeBorrowUSD = cumulativeBorrowUSD;
+  protocol.cumulativeDepositUSD = cumulativeDepositUSD;
+  protocol.cumulativeLiquidateUSD = cumulativeLiquidateUSD;
+  protocol.cumulativeTotalRevenueUSD = cumulativeTotalRevenueUSD;
+  protocol.cumulativeProtocolSideRevenueUSD = cumulativeProtocolSideRevenueUSD;
+  protocol.cumulativeSupplySideRevenueUSD = cumulativeSupplySideRevenueUSD;
+  protocol.save();
+}
+
+function setSupplyInterestRate(marketID: string, rate: BigDecimal): void {
+  setInterestRate(marketID, rate, true);
+}
+
+function setBorrowInterestRate(marketID: string, rate: BigDecimal): void {
+  setInterestRate(marketID, rate, false);
+}
+
+function setInterestRate(
+  marketID: string,
+  rate: BigDecimal,
+  isSupply: boolean
+): void {
+  let market = Market.load(marketID);
+  if (!market) {
+    log.warning("[setInterestRate] Market not found: {}", [marketID]);
+    return;
+  }
+  if (market.rates.length < 2) {
+    log.warning("[setInterestRate] Market has less than 2 rates: {}", [
+      marketID,
+    ]);
+    return;
+  }
+  let supplyInterestRateID = market.rates[0];
+  let borrowInterestRateID = market.rates[1];
+  let supplyInterestRate = InterestRate.load(supplyInterestRateID);
+  if (!supplyInterestRate) {
+    log.warning("[setInterestRate] Supply interest rate not found: {}", [
+      supplyInterestRateID,
+    ]);
+    return;
+  }
+  let borrowInterestRate = InterestRate.load(borrowInterestRateID);
+  if (!borrowInterestRate) {
+    log.warning("[setInterestRate] Borrow interest rate not found: {}", [
+      borrowInterestRateID,
+    ]);
+    return;
+  }
+  if (isSupply) {
+    supplyInterestRate.rate = rate;
+    supplyInterestRate.save();
+  } else {
+    borrowInterestRate.rate = rate;
+    borrowInterestRate.save();
+  }
+  market.rates = [supplyInterestRateID, borrowInterestRateID];
+  market.save();
+}
+
+function getTokenPriceUSD(
+  getUnderlyingPriceResult: ethereum.CallResult<BigInt>,
+  underlyingDecimals: i32
+): BigDecimal {
+  let mantissaDecimalFactor = 18 - underlyingDecimals + 18;
+  let bdFactor = exponentToBigDecimal(mantissaDecimalFactor);
+  return getOrElse<BigInt>(getUnderlyingPriceResult, BIGINT_ZERO)
+    .toBigDecimal()
+    .div(bdFactor);
+}
+
 function getMarketHourlySnapshotID(marketID: string, timestamp: i32): string {
   return marketID
     .concat("-")
@@ -1143,4 +1534,25 @@ function getMarketHourlySnapshotID(marketID: string, timestamp: i32): string {
 
 function getMarketDailySnapshotID(marketID: string, timestamp: i32): string {
   return marketID.concat("-").concat((timestamp / SECONDS_PER_DAY).toString());
+}
+
+function convertRatePerUnitToAPY(
+  ratePerUnit: BigInt,
+  unitPerYear: i32
+): BigDecimal {
+  return ratePerUnit
+    .times(BigInt.fromI32(unitPerYear))
+    .toBigDecimal()
+    .div(mantissaFactorBD)
+    .times(BIGDECIMAL_HUNDRED);
+}
+
+export function getOrElse<T>(
+  result: ethereum.CallResult<T>,
+  defaultValue: T
+): T {
+  if (result.reverted) {
+    return defaultValue;
+  }
+  return result.value;
 }
