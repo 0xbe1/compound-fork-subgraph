@@ -1248,9 +1248,6 @@ function updateMarket(
 
   market.inputTokenPriceUSD = underlyingTokenPriceUSD;
 
-  // let cTokenContract = CToken.bind(marketAddress);
-
-  // let totalSupplyResult = cTokenContract.try_totalSupply();
   if (updateMarketData.totalSupplyResult.reverted) {
     log.warning("[updateMarket] Failed to get totalSupply of Market {}", [
       marketID,
@@ -1266,7 +1263,6 @@ function updateMarket(
   market.totalValueLockedUSD = underlyingSupplyUSD;
   market.totalDepositBalanceUSD = underlyingSupplyUSD;
 
-  // let exchangeRateResult = cTokenContract.try_exchangeRateStored();
   if (updateMarketData.exchangeRateStoredResult.reverted) {
     log.warning(
       "[updateMarket] Failed to get exchangeRateStored of Market {}",
@@ -1287,7 +1283,6 @@ function updateMarket(
     );
   }
 
-  // let totalBorrowsResult = cTokenContract.try_totalBorrows();
   let totalBorrowUSD = BIGDECIMAL_ZERO;
   if (updateMarketData.totalBorrowsResult.reverted) {
     log.warning("[updateMarket] Failed to get totalBorrows of Market {}", [
@@ -1301,7 +1296,6 @@ function updateMarket(
     market.totalBorrowBalanceUSD = totalBorrowUSD;
   }
 
-  // let supplyRatePerTimestampResult = cTokenContract.try_supplyRatePerBlock();
   if (updateMarketData.supplyRateResult.reverted) {
     log.warning("[updateMarket] Failed to get supplyRate of Market {}", [
       marketID,
@@ -1316,7 +1310,6 @@ function updateMarket(
     );
   }
 
-  // let borrowRatePerTimestampResult = cTokenContract.try_borrowRatePerBlock();
   let borrowRatePerUnit = BIGDECIMAL_ZERO;
   if (updateMarketData.borrowRateResult.reverted) {
     log.warning("[updateMarket] Failed to get borrowRate of Market {}", [

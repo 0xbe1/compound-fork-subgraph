@@ -1,3 +1,5 @@
+
+import { Address, BigInt, log } from "@graphprotocol/graph-ts";
 // import from the generated at root in order to reuse methods from root
 import {
   NewPriceOracle,
@@ -43,26 +45,17 @@ import {
 } from "../../src/mapping";
 // otherwise import from the specific subgraph root
 import { CToken } from "../generated/Comptroller/CToken";
-import { Address, BigInt, log } from "@graphprotocol/graph-ts";
 import { Comptroller } from "../generated/Comptroller/Comptroller";
 import { CToken as CTokenTemplate } from "../generated/templates";
 import { ERC20 } from "../generated/Comptroller/ERC20";
 import { comptrollerAddr, nativeCToken, nativeToken } from "./constants";
 import { PriceOracle } from "../generated/templates/CToken/PriceOracle";
 
-//
-//
-// event.params
-// - oldPriceOracle
-// - newPriceOracle
 export function handleNewPriceOracle(event: NewPriceOracle): void {
   let protocol = getOrCreateProtocol();
   templateHandleNewPriceOracle(protocol, event);
 }
 
-//
-//
-// event.params.cToken: The address of the market (token) to list
 export function handleMarketListed(event: MarketListed): void {
   CTokenTemplate.create(event.params.cToken);
 
