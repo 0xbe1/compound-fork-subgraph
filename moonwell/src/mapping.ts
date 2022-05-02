@@ -28,11 +28,17 @@ import {
 import { CToken as CTokenTemplate } from "../generated/templates";
 import { ERC20 } from "../generated/Comptroller/ERC20";
 import {
-  Mint,
-  Redeem,
+  // Mint,
+  // Redeem,
   Borrow as BorrowEvent,
   RepayBorrow,
 } from "../generated/templates/CToken/CToken";
+import {
+  Mint,
+  Redeem,
+  // Borrow as BorrowEvent,
+  // RepayBorrow,
+} from "../../generated/templates/CToken/CToken";
 import {
   Account,
   Borrow,
@@ -91,6 +97,8 @@ import {
   MarketListedData,
   TokenData,
   templateHandleNewLiquidationIncentive,
+  templateHandleMint,
+  templateHandleRedeem,
 } from "../../src/mapping";
 
 enum EventType {
@@ -187,127 +195,12 @@ export function handleNewReserveFactor(event: NewReserveFactor): void {
   templateHandleNewReserveFactor(event);
 }
 
-//
-//
-// event.params
-// - minter
-// - mintAmount: The amount of underlying assets to mint
-// - mintTokens: The amount of cTokens minted
 export function handleMint(event: Mint): void {
-  let marketID = event.address.toHexString();
-  let market = Market.load(marketID);
-  if (!market) {
-    log.warning("[handleMint] Market not found: {}", [marketID]);
-    return;
-  }
-  let underlyingToken = Token.load(market.inputToken);
-  if (!underlyingToken) {
-    log.warning("[handleMint] Failed to load underlying token: {}", [
-      market.inputToken,
-    ]);
-    return;
-  }
-
-  let depositID = event.transaction.hash
-    .toHexString()
-    .concat("-")
-    .concat(event.transactionLogIndex.toString());
-  let deposit = new Deposit(depositID);
-  let protocol = getOrCreateProtocol();
-  deposit.hash = event.transaction.hash.toHexString();
-  deposit.logIndex = event.transactionLogIndex.toI32();
-  deposit.protocol = protocol.id;
-  deposit.to = marketID;
-  deposit.from = event.params.minter.toHexString();
-  deposit.blockNumber = event.block.number;
-  deposit.timestamp = event.block.timestamp;
-  deposit.market = marketID;
-  deposit.asset = market.inputToken;
-  deposit.amount = event.params.mintAmount;
-  let depositUSD = market.inputTokenPriceUSD.times(
-    event.params.mintAmount
-      .toBigDecimal()
-      .div(exponentToBigDecimal(underlyingToken.decimals))
-  );
-  deposit.amountUSD = depositUSD;
-  deposit.save();
-
-  market.inputTokenBalance = market.inputTokenBalance.plus(
-    event.params.mintAmount
-  );
-  market.cumulativeDepositUSD = market.cumulativeDepositUSD.plus(depositUSD);
-  market.save();
-
-  updateMarketSnapshots(
-    marketID,
-    event.block.timestamp.toI32(),
-    depositUSD,
-    EventType.Deposit
-  );
-
-  snapshotUsage(
-    event.block.number,
-    event.block.timestamp,
-    event.params.minter.toHexString(),
-    EventType.Deposit
-  );
+  templateHandleMint(comptrollerAddr, event);
 }
 
-//
-//
-// event.params
-// - redeemer
-// - redeemAmount
-// - redeemTokens
 export function handleRedeem(event: Redeem): void {
-  let marketID = event.address.toHexString();
-  let market = Market.load(marketID);
-  if (!market) {
-    log.warning("[handleRedeem] Market not found: {}", [marketID]);
-    return;
-  }
-  let underlyingToken = Token.load(market.inputToken);
-  if (!underlyingToken) {
-    log.warning("[handleRedeem] Failed to load underlying token: {}", [
-      market.inputToken,
-    ]);
-    return;
-  }
-
-  let withdrawID = event.transaction.hash
-    .toHexString()
-    .concat("-")
-    .concat(event.transactionLogIndex.toString());
-  let withdraw = new Withdraw(withdrawID);
-  let protocol = getOrCreateProtocol();
-  withdraw.hash = event.transaction.hash.toHexString();
-  withdraw.logIndex = event.transactionLogIndex.toI32();
-  withdraw.protocol = protocol.id;
-  withdraw.to = event.params.redeemer.toHexString();
-  withdraw.from = marketID;
-  withdraw.blockNumber = event.block.number;
-  withdraw.timestamp = event.block.timestamp;
-  withdraw.market = marketID;
-  withdraw.asset = market.inputToken;
-  withdraw.amount = event.params.redeemAmount;
-  withdraw.amountUSD = market.inputTokenPriceUSD.times(
-    event.params.redeemAmount
-      .toBigDecimal()
-      .div(exponentToBigDecimal(underlyingToken.decimals))
-  );
-  withdraw.save();
-
-  market.inputTokenBalance = market.inputTokenBalance.minus(
-    event.params.redeemAmount
-  );
-  market.save();
-
-  snapshotUsage(
-    event.block.number,
-    event.block.timestamp,
-    event.params.redeemer.toHexString(),
-    EventType.Withdraw
-  );
+  templateHandleRedeem(comptrollerAddr, event);
 }
 
 //
