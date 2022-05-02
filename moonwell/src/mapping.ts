@@ -15,7 +15,7 @@ import {
 import {
   AccrueInterest,
   CToken,
-  LiquidateBorrow,
+  // LiquidateBorrow,
   // NewReserveFactor,
 } from "../generated/Comptroller/CToken";
 import { NewReserveFactor } from "../../generated/Comptroller/CToken";
@@ -27,17 +27,17 @@ import {
 } from "../../generated/Comptroller/Comptroller";
 import { CToken as CTokenTemplate } from "../generated/templates";
 import { ERC20 } from "../generated/Comptroller/ERC20";
-import {
-  // Mint,
-  // Redeem,
-  Borrow as BorrowEvent,
-  RepayBorrow,
-} from "../generated/templates/CToken/CToken";
+import // Mint,
+// Redeem,
+// Borrow as BorrowEvent,
+// RepayBorrow,
+"../generated/templates/CToken/CToken";
 import {
   Mint,
   Redeem,
-  // Borrow as BorrowEvent,
-  // RepayBorrow,
+  Borrow as BorrowEvent,
+  RepayBorrow,
+  LiquidateBorrow,
 } from "../../generated/templates/CToken/CToken";
 import {
   Account,
@@ -99,6 +99,9 @@ import {
   templateHandleNewLiquidationIncentive,
   templateHandleMint,
   templateHandleRedeem,
+  templateHandleBorrow,
+  templateHandleRepayBorrow,
+  templateHandleLiquidateBorrow,
 } from "../../src/mapping";
 
 enum EventType {
@@ -203,231 +206,16 @@ export function handleRedeem(event: Redeem): void {
   templateHandleRedeem(comptrollerAddr, event);
 }
 
-//
-//
-// event.params
-// - borrower
-// - borrowAmount
-// - accountBorrows
-// - totalBorrows
 export function handleBorrow(event: BorrowEvent): void {
-  let marketID = event.address.toHexString();
-  let market = Market.load(marketID);
-  if (!market) {
-    log.warning("[handleBorrow] Market not found: {}", [marketID]);
-    return;
-  }
-  let underlyingToken = Token.load(market.inputToken);
-  if (!underlyingToken) {
-    log.warning("[handleBorrow] Failed to load underlying token: {}", [
-      market.inputToken,
-    ]);
-    return;
-  }
-
-  let borrowID = event.transaction.hash
-    .toHexString()
-    .concat("-")
-    .concat(event.transactionLogIndex.toString());
-  let borrow = new Borrow(borrowID);
-  let protocol = getOrCreateProtocol();
-  borrow.hash = event.transaction.hash.toHexString();
-  borrow.logIndex = event.transactionLogIndex.toI32();
-  borrow.protocol = protocol.id;
-  borrow.to = event.params.borrower.toHexString();
-  borrow.from = marketID;
-  borrow.blockNumber = event.block.number;
-  borrow.timestamp = event.block.timestamp;
-  borrow.market = marketID;
-  borrow.asset = market.inputToken;
-  borrow.amount = event.params.borrowAmount;
-  let borrowUSD = market.inputTokenPriceUSD.times(
-    event.params.borrowAmount
-      .toBigDecimal()
-      .div(exponentToBigDecimal(underlyingToken.decimals))
-  );
-  borrow.amountUSD = borrowUSD;
-  borrow.save();
-
-  market.cumulativeBorrowUSD = market.cumulativeBorrowUSD.plus(borrowUSD);
-  market.save();
-
-  updateMarketSnapshots(
-    marketID,
-    event.block.timestamp.toI32(),
-    borrowUSD,
-    EventType.Borrow
-  );
-
-  snapshotUsage(
-    event.block.number,
-    event.block.timestamp,
-    event.params.borrower.toHexString(),
-    EventType.Borrow
-  );
+  templateHandleBorrow(comptrollerAddr, event);
 }
 
-//
-//
-// event.params
-// - payer
-// - borrower
-// - repayAmount
-// - accountBorrows
-// - totalBorrows
 export function handleRepayBorrow(event: RepayBorrow): void {
-  let marketID = event.address.toHexString();
-  let market = Market.load(marketID);
-  if (!market) {
-    log.warning("[handleRepayBorrow] Market not found: {}", [marketID]);
-    return;
-  }
-  let underlyingToken = Token.load(market.inputToken);
-  if (!underlyingToken) {
-    log.warning("[handleRepayBorrow] Failed to load underlying token: {}", [
-      market.inputToken,
-    ]);
-    return;
-  }
-
-  let repayID = event.transaction.hash
-    .toHexString()
-    .concat("-")
-    .concat(event.transactionLogIndex.toString());
-  let repay = new Repay(repayID);
-  let protocol = getOrCreateProtocol();
-  repay.hash = event.transaction.hash.toHexString();
-  repay.logIndex = event.transactionLogIndex.toI32();
-  repay.protocol = protocol.id;
-  repay.to = marketID;
-  repay.from = event.params.payer.toHexString();
-  repay.blockNumber = event.block.number;
-  repay.timestamp = event.block.timestamp;
-  repay.market = marketID;
-  repay.asset = market.inputToken;
-  repay.amount = event.params.repayAmount;
-  repay.amountUSD = market.inputTokenPriceUSD.times(
-    event.params.repayAmount
-      .toBigDecimal()
-      .div(exponentToBigDecimal(underlyingToken.decimals))
-  );
-  repay.save();
-
-  snapshotUsage(
-    event.block.number,
-    event.block.timestamp,
-    event.params.payer.toHexString(),
-    EventType.Repay
-  );
+  templateHandleRepayBorrow(comptrollerAddr, event);
 }
 
-//
-//
-// event.params
-// - liquidator
-// - borrower
-// - repayAmount
-// - cTokenCollateral
-// - seizeTokens
 export function handleLiquidateBorrow(event: LiquidateBorrow): void {
-  let repayTokenMarketID = event.address.toHexString();
-  let repayTokenMarket = Market.load(repayTokenMarketID);
-  if (!repayTokenMarket) {
-    log.warning("[handleLiquidateBorrow] Repay Token Market not found: {}", [
-      repayTokenMarketID,
-    ]);
-    return;
-  }
-  if (!repayTokenMarket.inputToken) {
-    log.warning(
-      "[handleLiquidateBorrow] Repay Token Market {} has no input token",
-      [repayTokenMarketID]
-    );
-    return;
-  }
-  let repayToken = Token.load(repayTokenMarket.inputToken);
-  if (!repayToken) {
-    log.warning("[handleLiquidateBorrow] Failed to load repay token: {}", [
-      repayTokenMarket.inputToken,
-    ]);
-    return;
-  }
-
-  let liquidatedCTokenMarketID = event.params.mTokenCollateral.toHexString();
-  let liquidatedCTokenMarket = Market.load(liquidatedCTokenMarketID);
-  if (!liquidatedCTokenMarket) {
-    log.warning(
-      "[handleLiquidateBorrow] Liquidated CToken Market not found: {}",
-      [liquidatedCTokenMarketID]
-    );
-    return;
-  }
-  let liquidatedCTokenID = liquidatedCTokenMarket.outputToken;
-  if (!liquidatedCTokenID) {
-    log.warning(
-      "[handleLiquidateBorrow] Liquidated CToken Market {} has no output token",
-      [liquidatedCTokenMarketID]
-    );
-    return;
-  }
-  // compiler is too silly to figure out this is not null, so add a !
-  let liquidatedCToken = Token.load(liquidatedCTokenID!);
-  if (!liquidatedCToken) {
-    log.warning(
-      "[handleLiquidateBorrow] Failed to load liquidated cToken: {}",
-      [liquidatedCTokenID!]
-    );
-    return;
-  }
-
-  let liquidateID = event.transaction.hash
-    .toHexString()
-    .concat("-")
-    .concat(event.transactionLogIndex.toString());
-  let liquidate = new Liquidate(liquidateID);
-  let protocol = getOrCreateProtocol();
-  liquidate.hash = event.transaction.hash.toHexString();
-  liquidate.logIndex = event.transactionLogIndex.toI32();
-  liquidate.protocol = protocol.id;
-  liquidate.to = repayTokenMarketID;
-  liquidate.from = event.params.liquidator.toHexString();
-  liquidate.blockNumber = event.block.number;
-  liquidate.timestamp = event.block.timestamp;
-  liquidate.market = repayTokenMarketID;
-  if (liquidatedCTokenID) {
-    // this is logically redundant since nullcheck has been done before, but removing the if check will fail 'graph build'
-    liquidate.asset = liquidatedCTokenID;
-  }
-  liquidate.amount = event.params.seizeTokens;
-  let gainUSD = event.params.seizeTokens
-    .toBigDecimal()
-    .div(cTokenDecimalsBD)
-    .times(liquidatedCTokenMarket.outputTokenPriceUSD);
-  let lossUSD = event.params.repayAmount
-    .toBigDecimal()
-    .div(exponentToBigDecimal(repayToken.decimals))
-    .times(repayTokenMarket.inputTokenPriceUSD);
-  liquidate.amountUSD = gainUSD;
-  liquidate.profitUSD = gainUSD.minus(lossUSD);
-  liquidate.save();
-
-  liquidatedCTokenMarket.cumulativeLiquidateUSD =
-    liquidatedCTokenMarket.cumulativeLiquidateUSD.plus(gainUSD);
-  liquidatedCTokenMarket.save();
-
-  updateMarketSnapshots(
-    liquidatedCTokenMarketID,
-    event.block.timestamp.toI32(),
-    gainUSD,
-    EventType.Liquidate
-  );
-
-  snapshotUsage(
-    event.block.number,
-    event.block.timestamp,
-    event.params.liquidator.toHexString(),
-    EventType.Liquidate
-  );
+  templateHandleLiquidateBorrow(comptrollerAddr, event);
 }
 
 // This function is called whenever mint, redeem, borrow, repay, liquidateBorrow happens
