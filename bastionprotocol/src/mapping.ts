@@ -1,15 +1,10 @@
-import { Address, BigInt, log, ethereum } from "@graphprotocol/graph-ts";
-import { Comptroller } from "../generated/Comptroller/Comptroller";
-import { CToken } from "../generated/Comptroller/CToken";
-import { NewReserveFactor } from "../../generated/Comptroller/CToken";
+// import from the generated at root in order to reuse methods from root
 import {
   NewPriceOracle,
   MarketListed,
   NewCollateralFactor,
   NewLiquidationIncentive,
 } from "../../generated/Comptroller/Comptroller";
-import { CToken as CTokenTemplate } from "../generated/templates";
-import { ERC20 } from "../generated/Comptroller/ERC20";
 import {
   Mint,
   Redeem,
@@ -17,6 +12,7 @@ import {
   RepayBorrow,
   LiquidateBorrow,
   AccrueInterest,
+  NewReserveFactor,
 } from "../../generated/templates/CToken/CToken";
 import { LendingProtocol, Token } from "../../generated/schema";
 import {
@@ -25,13 +21,11 @@ import {
   BIGINT_ZERO,
   SECONDS_PER_YEAR,
 } from "../../src/constants";
-import { comptrollerAddr, nativeCToken, nativeToken } from "./constants";
-import { PriceOracle } from "../generated/templates/CToken/PriceOracle";
 import {
-  templateGetOrCreateProtocol,
   ProtocolData,
-  templateHandleNewCollateralFactor,
+  templateGetOrCreateProtocol,
   templateHandleNewReserveFactor,
+  templateHandleNewCollateralFactor,
   templateHandleNewPriceOracle,
   templateHandleMarketListed,
   MarketListedData,
@@ -47,6 +41,14 @@ import {
   templateHandleAccrueInterest,
   getOrElse,
 } from "../../src/mapping";
+// otherwise import from the specific subgraph root
+import { CToken } from "../generated/Comptroller/CToken";
+import { Address, BigInt, log } from "@graphprotocol/graph-ts";
+import { Comptroller } from "../generated/Comptroller/Comptroller";
+import { CToken as CTokenTemplate } from "../generated/templates";
+import { ERC20 } from "../generated/Comptroller/ERC20";
+import { comptrollerAddr, nativeCToken, nativeToken } from "./constants";
+import { PriceOracle } from "../generated/templates/CToken/PriceOracle";
 
 //
 //

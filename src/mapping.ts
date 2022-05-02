@@ -11,7 +11,6 @@ import {
   NewLiquidationIncentive,
   NewPriceOracle,
 } from "../generated/Comptroller/Comptroller";
-import { NewReserveFactor } from "../generated/Comptroller/CToken";
 import {
   Mint,
   Redeem,
@@ -19,6 +18,7 @@ import {
   RepayBorrow,
   LiquidateBorrow,
   AccrueInterest,
+  NewReserveFactor,
 } from "../generated/templates/CToken/CToken";
 import {
   Account,
