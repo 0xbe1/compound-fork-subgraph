@@ -12,8 +12,14 @@ export let comptrollerAddr = Address.fromString(
 export let MOVRAddr = Address.fromString(
   "0x0000000000000000000000000000000000000000"
 );
+export let mMOVRAddr = Address.fromString(
+  "0x6a1A771C7826596652daDC9145fEAaE62b1cd07f"
+);
 export let MFAMAddr = Address.fromString(
   "0xbb8d88bcd9749636bc4d2be22aac4bb3b01a58f1"
+);
+export let SolarBeamLPTokenAddr = Address.fromString(
+  "0xE6Bfc609A2e58530310D6964ccdd236fc93b4ADB"
 );
 
 // at this very moment, the average block time on moonriver is 24 seconds, therefore 3600 blocks per day

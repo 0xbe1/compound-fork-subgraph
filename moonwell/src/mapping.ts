@@ -1,4 +1,10 @@
-import { Address, BigInt, ethereum, log } from "@graphprotocol/graph-ts";
+import {
+  Address,
+  BigDecimal,
+  BigInt,
+  ethereum,
+  log,
+} from "@graphprotocol/graph-ts";
 // import from the generated at root in order to reuse methods from root
 import {
   NewPriceOracle,
@@ -54,16 +60,28 @@ import {
 // otherwise import from the specific subgraph root
 import { CToken } from "../generated/Comptroller/CToken";
 import { Comptroller } from "../generated/Comptroller/Comptroller";
+import { SolarBeamLPToken } from "../generated/templates/CToken/SolarBeamLPToken";
 import { CToken as CTokenTemplate } from "../generated/templates";
 import { ERC20 } from "../generated/Comptroller/ERC20";
 import {
   comptrollerAddr,
   MFAMAddr,
+  mMOVRAddr,
   MOVRAddr,
   nativeCToken,
   nativeToken,
+  SolarBeamLPTokenAddr,
 } from "./constants";
 import { PriceOracle } from "../generated/templates/CToken/PriceOracle";
+
+class RewardTokenEmission {
+  amount: BigInt;
+  USD: BigDecimal;
+  constructor(amount: BigInt, USD: BigDecimal) {
+    this.amount = amount;
+    this.USD = USD;
+  }
+}
 
 export function handleNewPriceOracle(event: NewPriceOracle): void {
   let protocol = getOrCreateProtocol();
@@ -165,10 +183,8 @@ export function handleLiquidateBorrow(event: LiquidateBorrow): void {
   templateHandleLiquidateBorrow(comptrollerAddr, event);
 }
 
-// This function is called whenever mint, redeem, borrow, repay, liquidateBorrow happens
 export function handleAccrueInterest(event: AccrueInterest): void {
   let marketAddress = event.address;
-
   setMarketRewards(marketAddress);
 
   let cTokenContract = CToken.bind(marketAddress);
@@ -206,8 +222,7 @@ function getOrCreateProtocol(): LendingProtocol {
   return templateGetOrCreateProtocol(protocolData);
 }
 
-// assumptions: reward 0 is MFAM, reward 1 is MOVR
-// [MFAM-supply, MOVR-supply, MFAM-borrow, MOVR-borrow]
+// rewardTokens = [MFAM-supply, MOVR-supply, MFAM-borrow, MOVR-borrow]
 function initMarketRewards(marketID: string): void {
   let market = Market.load(marketID);
   if (!market) {
@@ -308,72 +323,86 @@ function setMarketRewards(marketAddress: Address): void {
     log.warning("[setMarketRewards] Market not found: {}", [marketID]);
     return;
   }
-  let comptroller = Comptroller.bind(comptrollerAddr);
-  // set MFAM
-  setMFAMReward(
-    market,
-    comptroller.try_supplyRewardSpeeds(0, marketAddress),
-    0
-  );
-  setMFAMReward(
-    market,
-    comptroller.try_borrowRewardSpeeds(0, marketAddress),
-    2
-  );
-  // set MOVR
-  setMOVRReward(
-    market,
-    comptroller.try_supplyRewardSpeeds(1, marketAddress),
-    1
-  );
-  setMOVRReward(
-    market,
-    comptroller.try_borrowRewardSpeeds(1, marketAddress),
-    3
-  );
-}
 
-function setMOVRReward(
-  market: Market,
-  rewardSpeedsResult: ethereum.CallResult<BigInt>,
-  rewardIndex: i32
-): void {
-  if (rewardSpeedsResult.reverted) {
-    log.warning("[setMOVRReward] result reverted", []);
+  let MOVRMarket = Market.load(mMOVRAddr.toHexString());
+  if (!MOVRMarket) {
+    log.warning("[setMarketRewards] mMOVR market not found: {}", [
+      mMOVRAddr.toHexString(),
+    ]);
     return;
   }
-  let rewardAmountPerSecond = rewardSpeedsResult.value;
-  let rewardAmountPerYear = rewardAmountPerSecond.times(
-    BigInt.fromI32(SECONDS_PER_YEAR)
+
+  let MOVRPriceUSD = MOVRMarket.inputTokenPriceUSD;
+  let oneMFAMInMOVR = getOneMFAMInMOVR();
+  let MFAMPriceUSD = MOVRPriceUSD.times(oneMFAMInMOVR);
+  let comptroller = Comptroller.bind(comptrollerAddr);
+
+  // In Comptroller, 0 = MFAM, 1 = MOVR
+  let supplyMFAMEmission = getRewardTokenEmission(
+    comptroller.try_supplyRewardSpeeds(0, marketAddress),
+    18,
+    MFAMPriceUSD
   );
-  if (market.rewardTokenEmissionsAmount) {
-    let rewardTokenEmissionsAmount = market.rewardTokenEmissionsAmount!;
-    rewardTokenEmissionsAmount[rewardIndex] = rewardAmountPerYear;
-    market.rewardTokenEmissionsAmount = rewardTokenEmissionsAmount;
-  }
-  let rewardToken = Token.load(MOVRAddr.toHexString());
-  if (
-    rewardToken &&
-    rewardToken.lastPriceUSD &&
-    market.rewardTokenEmissionsUSD
-  ) {
-    let rewardTokenEmissionsUSD = market.rewardTokenEmissionsUSD!;
-    rewardTokenEmissionsUSD[rewardIndex] = rewardAmountPerYear
-      .toBigDecimal()
-      .div(exponentToBigDecimal(rewardToken.decimals))
-      .times(rewardToken.lastPriceUSD!); // need ! otherwise not compile
-    market.rewardTokenEmissionsUSD = rewardTokenEmissionsUSD;
-  }
-  market.save()
+  let supplyMOVREmission = getRewardTokenEmission(
+    comptroller.try_supplyRewardSpeeds(1, marketAddress),
+    18,
+    MOVRPriceUSD
+  );
+  let borrowMFAMEmission = getRewardTokenEmission(
+    comptroller.try_borrowRewardSpeeds(0, marketAddress),
+    18,
+    MFAMPriceUSD
+  );
+  let borrowMOVREmission = getRewardTokenEmission(
+    comptroller.try_borrowRewardSpeeds(1, marketAddress),
+    18,
+    MOVRPriceUSD
+  );
+
+  market.rewardTokenEmissionsAmount = [
+    supplyMFAMEmission.amount,
+    supplyMOVREmission.amount,
+    borrowMFAMEmission.amount,
+    borrowMOVREmission.amount,
+  ];
+  market.rewardTokenEmissionsUSD = [
+    supplyMFAMEmission.USD,
+    supplyMOVREmission.USD,
+    borrowMFAMEmission.USD,
+    borrowMOVREmission.USD,
+  ];
+  market.save();
 }
 
-// Interact with the solarbeam pair contract (0xE6Bfc609A2e58530310D6964ccdd236fc93b4ADB on moonriver)
-// Call getReserves()
-// let [MOVRReserve, MFAMReserve, _blockTimestampLast] = await contract.getReserves()
-// Calculate MOVRReserve / MFAMReserve, divide by an 18 digit mantissa, and multiply that by the price of MOVR.
-// MOVRReserve.div(MFAMReserve).times(cachedPrice[this.$store.state.nativeAssetTicker])
-function setMFAMReward(
-  market: Market,
+function getRewardTokenEmission(
   rewardSpeedsResult: ethereum.CallResult<BigInt>,
-  rewardIndex: i32
-): void {}
+  tokenDecimals: i32,
+  tokenPriceUSD: BigDecimal
+): RewardTokenEmission {
+  if (rewardSpeedsResult.reverted) {
+    log.warning("[getRewardTokenEmission] result reverted", []);
+    return new RewardTokenEmission(BIGINT_ZERO, BIGDECIMAL_ZERO);
+  }
+  let rewardAmountPerSecond = rewardSpeedsResult.value;
+  let rewardAmount = rewardAmountPerSecond.times(
+    BigInt.fromI32(SECONDS_PER_YEAR)
+  );
+  let rewardUSD = rewardAmount
+    .toBigDecimal()
+    .div(exponentToBigDecimal(tokenDecimals))
+    .times(tokenPriceUSD);
+  return new RewardTokenEmission(rewardAmount, rewardUSD);
+}
+
+// Fetch MFAM vs MOVR price from SolarBeam, as suggested by Luke, Moonwell's CEO.
+function getOneMFAMInMOVR(): BigDecimal {
+  let lpTokenContract = SolarBeamLPToken.bind(SolarBeamLPTokenAddr);
+  let getReservesResult = lpTokenContract.try_getReserves();
+  if (getReservesResult.reverted) {
+    log.warning("[getOneMFAMInMOVR] result reverted", []);
+    return BIGDECIMAL_ZERO;
+  }
+  let MOVRReserve = getReservesResult.value.value0;
+  let MFAMReserve = getReservesResult.value.value1;
+  return MOVRReserve.toBigDecimal().div(MFAMReserve.toBigDecimal());
+}
