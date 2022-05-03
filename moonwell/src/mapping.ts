@@ -1,4 +1,3 @@
-
 import { Address, BigInt, log } from "@graphprotocol/graph-ts";
 // import from the generated at root in order to reuse methods from root
 import {
@@ -182,6 +181,6 @@ function getOrCreateProtocol(): LendingProtocol {
     Network.MOONRIVER,
     comptroller.try_liquidationIncentiveMantissa()
   );
-  
+
   return templateGetOrCreateProtocol(protocolData);
 }

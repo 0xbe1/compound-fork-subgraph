@@ -95,7 +95,8 @@ export class ProtocolData {
     this.subgraphVersion = subgraphVersion;
     this.methodologyVersion = methodologyVersion;
     this.network = network;
-    this.liquidationIncentiveMantissaResult = liquidationIncentiveMantissaResult;
+    this.liquidationIncentiveMantissaResult =
+      liquidationIncentiveMantissaResult;
   }
 }
 
@@ -184,10 +185,11 @@ export function templateGetOrCreateProtocol(
         []
       );
     } else {
-      protocol._liquidationIncentive = protocolData.liquidationIncentiveMantissaResult.value
-        .toBigDecimal()
-        .div(mantissaFactorBD)
-        .times(BIGDECIMAL_HUNDRED);
+      protocol._liquidationIncentive =
+        protocolData.liquidationIncentiveMantissaResult.value
+          .toBigDecimal()
+          .div(mantissaFactorBD)
+          .times(BIGDECIMAL_HUNDRED);
     }
     protocol.save();
   }
