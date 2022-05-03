@@ -22,11 +22,6 @@ export let SolarBeamLPTokenAddr = Address.fromString(
   "0xE6Bfc609A2e58530310D6964ccdd236fc93b4ADB"
 );
 
-// at this very moment, the average block time on moonriver is 24 seconds, therefore 3600 blocks per day
-// however, we know this is fluctuating according to https://moonriver.moonscan.io/chart/blocks
-// maybe we could find a better way to get this data rather than hardcoding it
-export const BLOCKS_PER_DAY = 3600 as i32;
-
 export const nativeToken = new TokenData(
   Address.fromString("0x0000000000000000000000000000000000000000"),
   "MOVR",
