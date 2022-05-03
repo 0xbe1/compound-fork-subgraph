@@ -10,23 +10,25 @@ https://thegraph.com/hosted-service/subgraph/0xbe1/moonwell-subgraph
 
 https://thegraph.com/hosted-service/subgraph/0xbe1/bastionprotocol-subgraph
 
-## Development
+## Quickstart
 
-codegen
+Use moonwell as an example.
 
 ```
+yarn
+
+# generate code under root
+# codegen needs subgraph.yaml, here borrow one from bastionprotocol/
+# why bastionprotocol? because it doesn't override any abi, hence an ideal candidate
+graph codegen bastionprotocol/subgraph.yaml -o ./generated
+
+# generate code under moonwell
 subgraph=moonwell make codegen
-```
 
-build
-
-```
+# build moonwell
 subgraph=moonwell make build
-```
 
-deploy
-
-```
+# deploy moonwell
 subgraph-name=0xbe1/moonwell-subgraph subgraph=moonwell make deploy
 ```
 
@@ -56,16 +58,19 @@ Protocol-specific subgraph definition, abis and implementations.
 
 1. renames cToken to mToken
 1. rename supplyRatePerBlock to supplyRatePerTimestamp
+1. add supplyRewardSpeeds and borrowRewardSpeeds
 
-Since cToken -> mToken is nothing more than a naming change, we keep using abis/Comptroller.json.
-
-However, supplyRatePerBlock -> supplyRatePerTimestamp is actually a implementation change, so we use the specific CToken abi for moonwell.
-
-That's why in moonwell/subgraph.yaml, we have below (note the dots!):
+Therefore we need to use Moonwell-specific abis, see moonwell/subgraph.yaml (note the dots!):
 
 ```yaml
-- name: Comptroller
-    file: ../abis/Comptroller.json
 - name: CToken
     file: ./abis/CToken.json
+- name: Comptroller
+    file: ./abis/Comptroller.json
+- name: ERC20
+    file: ../abis/ERC20.json
+- name: PriceOracle
+    file: ../abis/PriceOracle.json
+- name: SolarBeamLPToken
+    file: ./abis/SolarBeamLPToken.json
 ```
