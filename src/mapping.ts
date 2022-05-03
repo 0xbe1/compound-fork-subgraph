@@ -1247,12 +1247,10 @@ function updateMarket(
   }
 
   let totalRevenueUSDPerUnit = totalBorrowUSD.times(borrowRatePerUnit);
-  let delta = BIGINT_ZERO;
-  if (updateMarketData.accruePer == AccruePer.Block) {
-    delta = blockNumber.minus(market._accrualBlockNumber);
-  } else {
-    delta = blockTimestamp.minus(market._accrualTimestamp);
-  }
+  let delta =
+    updateMarketData.accruePer == AccruePer.Block
+      ? blockNumber.minus(market._accrualBlockNumber)
+      : blockTimestamp.minus(market._accrualTimestamp);
   let totalRevenueUSDDelta = totalRevenueUSDPerUnit.times(
     new BigDecimal(delta)
   );
@@ -1269,6 +1267,9 @@ function updateMarket(
     market._cumulativeProtocolSideRevenueUSD.plus(protocolSideRevenueUSDDelta);
   market._cumulativeSupplySideRevenueUSD =
     market._cumulativeSupplySideRevenueUSD.plus(supplySideRevenueUSDDelta);
+  market._accrualTimestamp = blockTimestamp;
+  market._accrualBlockNumber = blockNumber;
+  market.save();
 
   // update daily fields in snapshot
   let snapshot = new MarketDailySnapshot(
@@ -1280,33 +1281,7 @@ function updateMarket(
     snapshot._dailyProtocolSideRevenueUSD.plus(protocolSideRevenueUSDDelta);
   snapshot._dailySupplySideRevenueUSD =
     snapshot._dailySupplySideRevenueUSD.plus(supplySideRevenueUSDDelta);
-
-  // rewards
-  // let comptroller = Comptroller.bind(comptrollerAddr);
-  // setMFAMReward(
-  //   market,
-  //   comptroller.try_borrowRewardSpeeds(0, marketAddress),
-  //   0
-  // );
-  // setMOVRReward(
-  //   market,
-  //   comptroller.try_borrowRewardSpeeds(1, marketAddress),
-  //   1
-  // );
-  // setMFAMReward(
-  //   market,
-  //   comptroller.try_supplyRewardSpeeds(0, marketAddress),
-  //   2
-  // );
-  // setMOVRReward(
-  //   market,
-  //   comptroller.try_supplyRewardSpeeds(1, marketAddress),
-  //   3
-  // );
-
-  market._accrualTimestamp = blockTimestamp;
-  market._accrualBlockNumber = blockNumber;
-  market.save();
+  snapshot.save();
 }
 
 function updateProtocol(comptrollerAddr: Address): void {
