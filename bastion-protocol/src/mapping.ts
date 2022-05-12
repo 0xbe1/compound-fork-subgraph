@@ -24,22 +24,21 @@ import {
 } from "../../src/constants";
 import {
   ProtocolData,
-  templateGetOrCreateProtocol,
-  templateHandleNewReserveFactor,
-  templateHandleNewCollateralFactor,
-  templateHandleNewPriceOracle,
-  templateHandleMarketListed,
+  _getOrCreateProtocol,
+  _handleNewReserveFactor,
+  _handleNewCollateralFactor,
+  _handleNewPriceOracle,
+  _handleMarketListed,
   MarketListedData,
   TokenData,
-  templateHandleNewLiquidationIncentive,
-  templateHandleMint,
-  templateHandleRedeem,
-  templateHandleBorrow,
-  templateHandleRepayBorrow,
-  templateHandleLiquidateBorrow,
+  _handleNewLiquidationIncentive,
+  _handleMint,
+  _handleRedeem,
+  _handleBorrow,
+  _handleRepayBorrow,
+  _handleLiquidateBorrow,
   UpdateMarketData,
-  AccruePer,
-  templateHandleAccrueInterest,
+  _handleAccrueInterest,
   getOrElse,
 } from "../../src/mapping";
 // otherwise import from the specific subgraph root
@@ -52,7 +51,7 @@ import { PriceOracle } from "../generated/templates/CToken/PriceOracle";
 
 export function handleNewPriceOracle(event: NewPriceOracle): void {
   let protocol = getOrCreateProtocol();
-  templateHandleNewPriceOracle(protocol, event);
+  _handleNewPriceOracle(protocol, event);
 }
 
 export function handleMarketListed(event: MarketListed): void {
@@ -78,7 +77,7 @@ export function handleMarketListed(event: MarketListed): void {
       nativeCToken,
       cTokenReserveFactorMantissa
     );
-    templateHandleMarketListed(marketListedData, event);
+    _handleMarketListed(marketListedData, event);
     return;
   }
 
@@ -92,7 +91,7 @@ export function handleMarketListed(event: MarketListed): void {
   }
   let underlyingTokenAddr = underlyingTokenAddrResult.value;
   let underlyingTokenContract = ERC20.bind(underlyingTokenAddr);
-  templateHandleMarketListed(
+  _handleMarketListed(
     new MarketListedData(
       protocol,
       new TokenData(
@@ -114,38 +113,38 @@ export function handleMarketListed(event: MarketListed): void {
 }
 
 export function handleNewCollateralFactor(event: NewCollateralFactor): void {
-  templateHandleNewCollateralFactor(event);
+  _handleNewCollateralFactor(event);
 }
 
 export function handleNewLiquidationIncentive(
   event: NewLiquidationIncentive
 ): void {
   let protocol = getOrCreateProtocol();
-  templateHandleNewLiquidationIncentive(protocol, event);
+  _handleNewLiquidationIncentive(protocol, event);
 }
 
 export function handleNewReserveFactor(event: NewReserveFactor): void {
-  templateHandleNewReserveFactor(event);
+  _handleNewReserveFactor(event);
 }
 
 export function handleMint(event: Mint): void {
-  templateHandleMint(comptrollerAddr, event);
+  _handleMint(comptrollerAddr, event);
 }
 
 export function handleRedeem(event: Redeem): void {
-  templateHandleRedeem(comptrollerAddr, event);
+  _handleRedeem(comptrollerAddr, event);
 }
 
 export function handleBorrow(event: BorrowEvent): void {
-  templateHandleBorrow(comptrollerAddr, event);
+  _handleBorrow(comptrollerAddr, event);
 }
 
 export function handleRepayBorrow(event: RepayBorrow): void {
-  templateHandleRepayBorrow(comptrollerAddr, event);
+  _handleRepayBorrow(comptrollerAddr, event);
 }
 
 export function handleLiquidateBorrow(event: LiquidateBorrow): void {
-  templateHandleLiquidateBorrow(comptrollerAddr, event);
+  _handleLiquidateBorrow(comptrollerAddr, event);
 }
 
 export function handleAccrueInterest(event: AccrueInterest): void {
@@ -161,11 +160,10 @@ export function handleAccrueInterest(event: AccrueInterest): void {
     cTokenContract.try_totalBorrows(),
     cTokenContract.try_supplyRatePerBlock(),
     cTokenContract.try_borrowRatePerBlock(),
-    AccruePer.Timestamp,
     oracleContract.try_getUnderlyingPrice(marketAddress),
     SECONDS_PER_YEAR
   );
-  templateHandleAccrueInterest(updateMarketData, comptrollerAddr, event);
+  _handleAccrueInterest(updateMarketData, comptrollerAddr, event);
 }
 
 function getOrCreateProtocol(): LendingProtocol {
@@ -174,11 +172,11 @@ function getOrCreateProtocol(): LendingProtocol {
     comptrollerAddr,
     "Bastion Protocol",
     "bastion-protocol",
-    "1.2.0",
-    "1.0.0",
+    "1.2.1",
+    "1.0.2",
     "1.0.0",
     Network.AURORA,
     comptroller.try_liquidationIncentiveMantissa()
   );
-  return templateGetOrCreateProtocol(protocolData);
+  return _getOrCreateProtocol(protocolData);
 }

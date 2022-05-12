@@ -10,6 +10,10 @@ https://thegraph.com/hosted-service/subgraph/0xbe1/moonwell-subgraph
 
 https://thegraph.com/hosted-service/subgraph/0xbe1/bastionprotocol-subgraph
 
+### Benqi
+
+https://thegraph.com/hosted-service/subgraph/0xbe1/benqi-subgraph
+
 ## Quickstart
 
 Use moonwell as an example.
@@ -18,9 +22,9 @@ Use moonwell as an example.
 yarn
 
 # generate code under root
-# codegen needs subgraph.yaml, here borrow one from bastionprotocol/
-# why bastionprotocol? because it doesn't override any abi, hence an ideal candidate
-graph codegen bastionprotocol/subgraph.yaml -o ./generated
+# codegen needs subgraph.yaml, here borrow one from bastion-protocol/
+# why bastion-protocol? because it doesn't override any abi, hence an ideal candidate
+graph codegen bastion-protocol/subgraph.yaml -o ./generated
 
 # generate code under moonwell
 subgraph=moonwell make codegen
@@ -29,7 +33,7 @@ subgraph=moonwell make codegen
 subgraph=moonwell make build
 
 # deploy moonwell
-subgraph-name=0xbe1/moonwell-subgraph subgraph=moonwell make deploy
+make deploy subgraph-name=0xbe1/moonwell-subgraph subgraph=moonwell
 ```
 
 ## Project Layout
@@ -50,14 +54,14 @@ Shared logic among the forks.
 
 Useful queries to run against a Compound fork subgraph.
 
-### bastionprotocol/moonwell/etc
+### bastion-protocol/moonwell/etc
 
 Protocol-specific subgraph definition, abis and implementations.
 
 **Notice**: Some forks have different abis from Compound. For example, Moonwell:
 
 1. renames cToken to mToken
-1. rename supplyRatePerBlock to supplyRatePerTimestamp
+1. rename supplyRatePerBlock to supplyRatePerTimestamp because it accrues interest every second, not block
 1. add supplyRewardSpeeds and borrowRewardSpeeds
 
 Therefore we need to use Moonwell-specific abis, see moonwell/subgraph.yaml (note the dots!):
