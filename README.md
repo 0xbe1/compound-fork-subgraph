@@ -1,4 +1,8 @@
-# Compound Fork Subgraph
+# Compound Fork Subgraph (archived)
+
+**The repo is now part of [messari/subgraphs](https://github.com/messari/subgraphs/tree/master/subgraphs/compound-forks).**
+
+---
 
 ## Deployments
 
